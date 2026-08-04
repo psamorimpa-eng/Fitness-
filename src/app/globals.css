@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --fonte-display: "Barlow Condensed";
+  --fonte-corpo: "Inter";
+  --fonte-mono: "JetBrains Mono";
+
+  --bg: #101216;
+  --superficie: #181b22;
+  --superficie-2: #20242d;
+  --linha: #2c313c;
+  --texto: #f2f4f8;
+  --dim: #9aa3b2;
+  --fraco: #6b7383;
+  --marca: #e23a2e;
+  --marca-suave: #3a1a17;
+  --ok: #16a34a;
+  --alerta: #f4c20d;
+}
+
+[data-tema="claro"] {
+  --bg: #f1f2f5;
+  --superficie: #ffffff;
+  --superficie-2: #f6f7f9;
+  --linha: #e1e4ea;
+  --texto: #14161c;
+  --dim: #5b6472;
+  --fraco: #8a93a2;
+  --marca: #c62b20;
+  --marca-suave: #fdebe8;
+  --ok: #15803d;
+  --alerta: #b4890a;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--texto);
+  font-family: var(--fonte-corpo), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* tipografia de placa de academia, usada nos títulos */
+.display {
+  font-family: var(--fonte-display), "Arial Narrow", sans-serif;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+.rotulo {
+  font-family: var(--fonte-display), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--fraco);
+}
+.numero { font-family: var(--fonte-mono), monospace; font-weight: 700; letter-spacing: -0.02em; }
+
+.cartao {
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: 1rem;
+}
+
+/* faixa de anilhas: assinatura visual do produto */
+.anilhas { display: flex; gap: 4px; }
+.anilhas span { height: 5px; border-radius: 3px; }
+
+:focus-visible { outline: 2px solid var(--marca); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+.sem-barra::-webkit-scrollbar { display: none; }
+.sem-barra { scrollbar-width: none; }

@@ -1,4 +1,5 @@
 import { LogOut, ChevronRight } from "lucide-react";
+import { redirect } from "next/navigation";
 import { usuarioAtual } from "@/lib/supabase/server";
 import { sair } from "../../(auth)/acoes";
 import { Cartao, Rotulo, Titulo, Indicador, Etiqueta, Cabecalho } from "@/components/ui";
@@ -14,7 +15,8 @@ const ATALHOS = [
 ];
 
 export default async function Perfil() {
-  const usuario = (await usuarioAtual())!;
+  const usuario = await usuarioAtual();
+  if (!usuario) redirect("/login");
   const perfil = usuario.perfis_aluno;
   const idade = usuario.nascimento
     ? Math.floor(diasEntre(usuario.nascimento, new Date().toISOString().slice(0, 10)) / 365.25)

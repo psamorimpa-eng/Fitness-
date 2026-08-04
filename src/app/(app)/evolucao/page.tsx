@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import { Cabecalho, Indicador, Vazio } from "@/components/ui";
 import GraficosEvolucao from "@/components/GraficosEvolucao";
@@ -7,7 +8,8 @@ import type { TreinoComSeries } from "@/lib/tipos";
 export const dynamic = "force-dynamic";
 
 export default async function Evolucao({ searchParams }: { searchParams: { aluno?: string } }) {
-  const usuario = (await usuarioAtual())!;
+  const usuario = await usuarioAtual();
+  if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
   const alunoId = searchParams.aluno ?? usuario.id;
 

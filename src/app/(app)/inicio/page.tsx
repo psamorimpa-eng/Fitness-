@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Play, ChevronRight, MessageSquare } from "lucide-react";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import { Cartao, Rotulo, Titulo, Indicador, Barra, FaixaAnilhas, Vazio } from "@/components/ui";
@@ -8,7 +9,8 @@ import type { TreinoComSeries } from "@/lib/tipos";
 export const dynamic = "force-dynamic";
 
 export default async function Inicio() {
-  const usuario = (await usuarioAtual())!;
+  const usuario = await usuarioAtual();
+  if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
 
   if (usuario.papel !== "aluno") {

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import { Cartao, Rotulo, Titulo, Cabecalho, Vazio } from "@/components/ui";
 import { fmtData } from "@/lib/formato";
@@ -5,7 +6,8 @@ import { fmtData } from "@/lib/formato";
 export const dynamic = "force-dynamic";
 
 export default async function Historico({ searchParams }: { searchParams: { aluno?: string } }) {
-  const usuario = (await usuarioAtual())!;
+  const usuario = await usuarioAtual();
+  if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
   const alunoId = searchParams.aluno ?? usuario.id;
 

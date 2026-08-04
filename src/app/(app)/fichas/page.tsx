@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import { Cartao, Titulo, Etiqueta, Cabecalho, Vazio } from "@/components/ui";
@@ -8,7 +9,8 @@ import { fmtData } from "@/lib/formato";
 export const dynamic = "force-dynamic";
 
 export default async function Fichas() {
-  const usuario = (await usuarioAtual())!;
+  const usuario = await usuarioAtual();
+  if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
 
   const consulta = supabase

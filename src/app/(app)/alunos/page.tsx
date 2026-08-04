@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import { Cartao, Titulo, Etiqueta, Cabecalho, Vazio } from "@/components/ui";
 import { iniciais, diasEntre } from "@/lib/formato";
@@ -6,7 +7,8 @@ import { iniciais, diasEntre } from "@/lib/formato";
 export const dynamic = "force-dynamic";
 
 export default async function Alunos() {
-  const usuario = (await usuarioAtual())!;
+  const usuario = await usuarioAtual();
+  if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
 
   const consulta = supabase

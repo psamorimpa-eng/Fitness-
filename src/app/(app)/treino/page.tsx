@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Play } from "lucide-react";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import { Cartao, Rotulo, Titulo, Etiqueta, Vazio } from "@/components/ui";
@@ -7,7 +8,8 @@ import { fmtData, diasEntre } from "@/lib/formato";
 export const dynamic = "force-dynamic";
 
 export default async function Treino() {
-  const usuario = (await usuarioAtual())!;
+  const usuario = await usuarioAtual();
+  if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
 
   const { data: ficha } = await supabase

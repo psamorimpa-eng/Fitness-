@@ -5,7 +5,8 @@ import EditorFicha from "@/components/EditorFicha";
 export const dynamic = "force-dynamic";
 
 export default async function EditarFicha({ params }: { params: { fichaId: string } }) {
-  const usuario = (await usuarioAtual())!;
+  const usuario = await usuarioAtual();
+  if (!usuario) redirect("/login");
   if (usuario.papel === "aluno") redirect("/treino");
 
   const supabase = criarClienteServidor();

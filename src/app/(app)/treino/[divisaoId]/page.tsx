@@ -1,11 +1,12 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import ExecucaoTreino from "@/components/ExecucaoTreino";
 
 export const dynamic = "force-dynamic";
 
 export default async function ExecucaoPage({ params }: { params: { divisaoId: string } }) {
-  const usuario = (await usuarioAtual())!;
+  const usuario = await usuarioAtual();
+  if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
 
   const { data: divisao } = await supabase

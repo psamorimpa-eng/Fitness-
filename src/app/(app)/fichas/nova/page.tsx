@@ -6,7 +6,8 @@ import { Vazio } from "@/components/ui";
 export const dynamic = "force-dynamic";
 
 export default async function NovaFicha({ searchParams }: { searchParams: { aluno?: string } }) {
-  const usuario = (await usuarioAtual())!;
+  const usuario = await usuarioAtual();
+  if (!usuario) redirect("/login");
   if (usuario.papel === "aluno") redirect("/treino");
 
   const supabase = criarClienteServidor();

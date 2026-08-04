@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import type { SetAllCookies } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "@/lib/tipos";
 
@@ -11,7 +12,7 @@ export function criarClienteServidor() {
     {
       cookies: {
         getAll: () => jar.getAll(),
-        setAll: (lista) => {
+        setAll: (lista: Parameters<SetAllCookies>[0]) => {
           try {
             lista.forEach(({ name, value, options }) => jar.set(name, value, options));
           } catch {

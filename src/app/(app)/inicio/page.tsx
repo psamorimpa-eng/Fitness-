@@ -3,6 +3,7 @@ import { Play, ChevronRight, MessageSquare } from "lucide-react";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import { Cartao, Rotulo, Titulo, Indicador, Barra, FaixaAnilhas, Vazio } from "@/components/ui";
 import { fmtData, semanaDe } from "@/lib/formato";
+import type { TreinoComSeries } from "@/lib/tipos";
 
 export const dynamic = "force-dynamic";
 
@@ -46,8 +47,9 @@ export default async function Inicio() {
 
   const meta = usuario.perfis_aluno?.meta_semanal ?? 3;
   const hoje = new Date().toISOString().slice(0, 10);
-  const daSemana = (treinos ?? []).filter((t) => semanaDe(t.data) === semanaDe(hoje));
-  const ultimo = treinos?.[0];
+  const listaTreinos = (treinos ?? []) as unknown as TreinoComSeries[];
+  const daSemana = listaTreinos.filter((t) => semanaDe(t.data) === semanaDe(hoje));
+  const ultimo = listaTreinos[0];
 
   const divisoes = [...(ficha?.divisoes_treino ?? [])].sort((a, b) => a.ordem - b.ordem);
   const indiceAtual = divisoes.findIndex((d) => d.id === ultimo?.divisao_id);

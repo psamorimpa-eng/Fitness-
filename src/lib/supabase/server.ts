@@ -32,7 +32,7 @@ export async function usuarioAtual() {
 
   const { data } = await supabase
     .from("usuarios")
-    .select("*, perfis_aluno(*), perfis_personal(*)")
+    .select("*, perfis_aluno!perfis_aluno_usuario_id_fkey(*), perfis_personal(*)")
     .eq("id", user.id)
     .single();
 

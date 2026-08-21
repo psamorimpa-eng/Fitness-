@@ -15,7 +15,7 @@ export default async function NovaFicha() {
       .eq("usuario_id", usuario.id)
       .maybeSingle(),
     supabase.from("exercicios")
-      .select("id, nome, nivel, categorias_musculares(nome), equipamentos(nome)")
+      .select("id, nome, nivel, tipo, descricao, imagem_url, video_url, categorias_musculares(nome), equipamentos(nome)")
       .eq("ativo", true)
       .order("nome"),
     supabase.rpc("exercicios_frequentes", { p_limite: 12 }),
@@ -35,6 +35,10 @@ export default async function NovaFicha() {
         id: e.id,
         nome: e.nome,
         nivel: e.nivel,
+        tipo: e.tipo,
+        descricao: e.descricao,
+        imagem_url: e.imagem_url,
+        video_url: e.video_url,
         grupo: e.categorias_musculares?.nome ?? "Outros",
         equipamento: e.equipamentos?.nome ?? "Outros",
       }))}

@@ -10,7 +10,12 @@ export async function entrar(_estado: unknown, form: FormData) {
     password: String(form.get("senha") ?? ""),
   });
 
-  if (error) return { erro: "E mail ou senha não conferem." };
+  if (error) {
+    if (error.code === "email_not_confirmed") {
+      return { erro: "Seu cadastro ainda está aguardando confirmação. Tente novamente em alguns segundos." };
+    }
+    return { erro: "E mail ou senha não conferem." };
+  }
 
   revalidatePath("/", "layout");
   redirect("/inicio");
@@ -42,12 +47,15 @@ export async function cadastrar(_estado: unknown, form: FormData) {
 
   if (error) return { erro: error.message };
 
-  if (data.session) {
-    revalidatePath("/", "layout");
-    redirect("/inicio");
+  if (!data.session) {
+    const { error: erroLogin } = await supabase.auth.signInWithPassword({ email, password: senha });
+    if (erroLogin) {
+      return { ok: "Conta criada. Volte para a tela de login e entre com seu e mail e senha." };
+    }
   }
 
-  return { ok: "Conta criada. Confira seu e mail para confirmar o cadastro e depois faça o login." };
+  revalidatePath("/", "layout");
+  redirect("/inicio");
 }
 
 export async function recuperarSenha(_estado: unknown, form: FormData) {

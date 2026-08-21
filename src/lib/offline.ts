@@ -4,9 +4,8 @@ import { criarClienteNavegador } from "@/lib/supabase/client";
 
 /**
  * Fila offline do treino.
- * Cada série concluída é gravada no aparelho antes de qualquer chamada de rede.
- * A chave (treino_local_id, exercicio_id, numero_serie) torna o envio idempotente,
- * então reenviar a fila nunca duplica registro.
+ * Cada alteração é gravada primeiro no aparelho e depois sincronizada com o Supabase.
+ * A chave lógica (treino_local_id, exercicio_id, numero_serie) torna o envio idempotente.
  */
 export interface SerieLocal {
   id?: number;
@@ -18,6 +17,15 @@ export interface SerieLocal {
   pse: number | null;
   aquecimento: boolean;
   registrada_em: string;
+  exercicio_nome_snapshot?: string | null;
+  ordem_exercicio?: number | null;
+  series_planejadas?: number | null;
+  rep_min_planejada?: number | null;
+  rep_max_planejada?: number | null;
+  carga_planejada?: number | null;
+  descanso_planejado?: number | null;
+  observacoes?: string | null;
+  status_serie?: "pendente" | "concluida" | "pulada";
   enviada: 0 | 1;
 }
 
@@ -31,6 +39,10 @@ export interface TreinoLocal {
   fim_em: string | null;
   duracao_min: number | null;
   observacoes: string;
+  ficha_nome_snapshot?: string | null;
+  divisao_codigo_snapshot?: string | null;
+  divisao_nome_snapshot?: string | null;
+  plano_snapshot?: unknown[];
   finalizado: 0 | 1;
   enviado: 0 | 1;
 }
@@ -47,12 +59,16 @@ class BancoLocal extends Dexie {
       series: "++id, treino_local_id, enviada, [treino_local_id+exercicio_id+numero_serie]",
       fichas: "id",
     });
+    this.version(2).stores({
+      treinos: "local_id, enviado, finalizado, aluno_id, divisao_id",
+      series: "++id, treino_local_id, enviada, [treino_local_id+exercicio_id+numero_serie]",
+      fichas: "id",
+    });
   }
 }
 
 export const bancoLocal = typeof window !== "undefined" ? new BancoLocal() : (null as unknown as BancoLocal);
 
-/** Guarda a ficha para abrir o treino sem internet. */
 export async function guardarFicha(id: string, conteudo: unknown) {
   await bancoLocal.fichas.put({ id, conteudo, salvo_em: new Date().toISOString() });
 }
@@ -61,46 +77,99 @@ export async function lerFichaLocal(id: string) {
   return (await bancoLocal.fichas.get(id))?.conteudo ?? null;
 }
 
+/** Retorna o treino não finalizado mais recente daquela divisão no aparelho. */
+export async function carregarTreinoLocalEmAndamento(alunoId: string, divisaoId: string) {
+  const candidatos = (await bancoLocal.treinos.where("finalizado").equals(0).toArray())
+    .filter((t) => t.aluno_id === alunoId && t.divisao_id === divisaoId)
+    .sort((a, b) => b.inicio_em.localeCompare(a.inicio_em));
+  const treino = candidatos[0];
+  if (!treino) return null;
+  const series = await bancoLocal.series.where("treino_local_id").equals(treino.local_id).toArray();
+  return { treino, series };
+}
+
+/** Salva/atualiza a mesma série local sem criar duplicatas. */
 export async function registrarSerie(serie: Omit<SerieLocal, "id" | "enviada">) {
-  await bancoLocal.series.put({ ...serie, enviada: 0 });
+  const chave: [string, string, number] = [serie.treino_local_id, serie.exercicio_id, serie.numero_serie];
+  const existente = await bancoLocal.series
+    .where("[treino_local_id+exercicio_id+numero_serie]").equals(chave).first();
+
+  if (existente?.id !== undefined) {
+    await bancoLocal.series.put({ ...serie, id: existente.id, enviada: 0 });
+  } else {
+    await bancoLocal.series.add({ ...serie, enviada: 0 });
+  }
+  await bancoLocal.treinos.update(serie.treino_local_id, { enviado: 0 });
   void sincronizar();
 }
 
+/** Cria a sessão local e tenta persistir imediatamente no servidor como em andamento. */
 export async function iniciarTreinoLocal(t: Omit<TreinoLocal, "finalizado" | "enviado">) {
-  await bancoLocal.treinos.put({ ...t, finalizado: 0, enviado: 0 });
+  const atual = await bancoLocal.treinos.get(t.local_id);
+  await bancoLocal.treinos.put({
+    ...t,
+    finalizado: atual?.finalizado ?? 0,
+    enviado: 0,
+  });
+  void sincronizar();
 }
 
 export async function finalizarTreinoLocal(local_id: string, duracao_min: number, observacoes: string) {
   await bancoLocal.treinos.update(local_id, {
-    finalizado: 1, duracao_min, observacoes, fim_em: new Date().toISOString(),
+    finalizado: 1,
+    enviado: 0,
+    duracao_min,
+    observacoes,
+    fim_em: new Date().toISOString(),
   });
   return sincronizar();
 }
 
-/** Envia a fila pendente. Seguro para chamar quantas vezes for preciso. */
-export async function sincronizar(): Promise<{ enviados: number; pendentes: number }> {
+/** Envia treinos em andamento e concluídos, além das séries pendentes. */
+export async function sincronizar(): Promise<{ enviados: number; pendentes: number; erro?: string }> {
+  const pendentesAntes = await bancoLocal.series.where("enviada").equals(0).count();
+  const treinosPendentesAntes = await bancoLocal.treinos.where("enviado").equals(0).count();
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    const pendentes = await bancoLocal.series.where("enviada").equals(0).count();
-    return { enviados: 0, pendentes };
+    return { enviados: 0, pendentes: pendentesAntes + treinosPendentesAntes };
   }
 
   const supabase = criarClienteNavegador();
-  const treinos = await bancoLocal.treinos.where("finalizado").equals(1).toArray();
-  let enviados = 0;
+  const seriesPendentes = await bancoLocal.series.where("enviada").equals(0).toArray();
+  const ids = new Set((await bancoLocal.treinos.where("enviado").equals(0).primaryKeys()) as string[]);
+  seriesPendentes.forEach((s) => ids.add(s.treino_local_id));
 
-  for (const t of treinos.filter((x) => !x.enviado)) {
+  let enviados = 0;
+  let ultimoErro: string | undefined;
+
+  for (const localId of ids) {
+    const t = await bancoLocal.treinos.get(localId);
+    if (!t) continue;
+
     const { data: treino, error } = await supabase
       .from("treinos_realizados")
       .upsert({
-        aluno_id: t.aluno_id, ficha_id: t.ficha_id, divisao_id: t.divisao_id,
-        data: t.data, inicio_em: t.inicio_em, fim_em: t.fim_em,
-        duracao_min: t.duracao_min, observacoes: t.observacoes,
-        status: "concluido", local_id: t.local_id,
+        aluno_id: t.aluno_id,
+        ficha_id: t.ficha_id,
+        divisao_id: t.divisao_id,
+        data: t.data,
+        inicio_em: t.inicio_em,
+        fim_em: t.fim_em,
+        duracao_min: t.duracao_min,
+        observacoes: t.observacoes,
+        status: t.finalizado ? "concluido" : "em_andamento",
+        local_id: t.local_id,
+        ficha_nome_snapshot: t.ficha_nome_snapshot ?? undefined,
+        divisao_codigo_snapshot: t.divisao_codigo_snapshot ?? undefined,
+        divisao_nome_snapshot: t.divisao_nome_snapshot ?? undefined,
+        plano_snapshot: t.plano_snapshot ?? undefined,
       }, { onConflict: "local_id" })
       .select("id")
       .single();
 
-    if (error || !treino) continue;
+    if (error || !treino) {
+      ultimoErro = error?.message ?? "Não foi possível salvar o treino";
+      continue;
+    }
 
     const series = await bancoLocal.series
       .where("treino_local_id").equals(t.local_id)
@@ -109,13 +178,30 @@ export async function sincronizar(): Promise<{ enviados: number; pendentes: numb
     if (series.length) {
       const { error: erroSeries } = await supabase.from("series_realizadas").upsert(
         series.map((s) => ({
-          treino_id: treino.id, exercicio_id: s.exercicio_id, numero_serie: s.numero_serie,
-          carga_kg: s.carga_kg, repeticoes: s.repeticoes, pse: s.pse,
-          aquecimento: s.aquecimento, registrada_em: s.registrada_em,
+          treino_id: treino.id,
+          exercicio_id: s.exercicio_id,
+          numero_serie: s.numero_serie,
+          carga_kg: s.carga_kg,
+          repeticoes: s.repeticoes,
+          pse: s.pse,
+          aquecimento: s.aquecimento,
+          registrada_em: s.registrada_em,
+          exercicio_nome_snapshot: s.exercicio_nome_snapshot ?? undefined,
+          ordem_exercicio: s.ordem_exercicio ?? undefined,
+          series_planejadas: s.series_planejadas ?? undefined,
+          rep_min_planejada: s.rep_min_planejada ?? undefined,
+          rep_max_planejada: s.rep_max_planejada ?? undefined,
+          carga_planejada: s.carga_planejada ?? undefined,
+          descanso_planejado: s.descanso_planejado ?? undefined,
+          observacoes: s.observacoes ?? undefined,
+          status_serie: s.status_serie ?? "concluida",
         })),
         { onConflict: "treino_id,exercicio_id,numero_serie" }
       );
-      if (erroSeries) continue;
+      if (erroSeries) {
+        ultimoErro = erroSeries.message;
+        continue;
+      }
       await bancoLocal.series.bulkPut(series.map((s) => ({ ...s, enviada: 1 })));
     }
 
@@ -123,15 +209,18 @@ export async function sincronizar(): Promise<{ enviados: number; pendentes: numb
     enviados += 1;
   }
 
-  const pendentes = await bancoLocal.series.where("enviada").equals(0).count();
-  return { enviados, pendentes };
+  const pendSeries = await bancoLocal.series.where("enviada").equals(0).count();
+  const pendTreinos = await bancoLocal.treinos.where("enviado").equals(0).count();
+  return { enviados, pendentes: pendSeries + pendTreinos, erro: ultimoErro };
 }
 
-/** Liga a sincronização automática: a cada 30 segundos e quando a rede volta. */
 export function ligarSincronizacaoAutomatica() {
   if (typeof window === "undefined") return () => {};
-  const tempo = setInterval(() => void sincronizar(), 30_000);
+  const tempo = setInterval(() => void sincronizar(), 15_000);
   const aoVoltar = () => void sincronizar();
   window.addEventListener("online", aoVoltar);
-  return () => { clearInterval(tempo); window.removeEventListener("online", aoVoltar); };
+  return () => {
+    clearInterval(tempo);
+    window.removeEventListener("online", aoVoltar);
+  };
 }

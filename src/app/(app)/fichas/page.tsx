@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, Plus } from "lucide-react";
+import { AlertTriangle, Dumbbell, Plus } from "lucide-react";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import { Cartao, Titulo, Etiqueta, Cabecalho, Vazio } from "@/components/ui";
 import AcoesFicha from "@/components/AcoesFicha";
@@ -21,17 +21,20 @@ export default async function Fichas() {
     .eq("aluno_id", usuario.id)
     .order("data_inicio", { ascending: false });
 
-  const botaoNova = (
-    <Link href="/fichas/nova" className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-white" style={{ background: "var(--marca)" }}><Plus size={15} /> Nova</Link>
+  const acoesTopo = (
+    <div className="flex items-center gap-2">
+      <Link href="/exercicios" className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--linha)" }}><Dumbbell size={15} /> Exercícios</Link>
+      <Link href="/fichas/nova" className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-white" style={{ background: "var(--marca)" }}><Plus size={15} /> Nova</Link>
+    </div>
   );
 
   if (!fichas?.length) {
-    return <><Cabecalho titulo="Fichas" direita={botaoNova} /><Vazio titulo="Nenhuma ficha criada" texto="Monte sua primeira ficha de treino." acao={<Link href="/fichas/nova" className="rounded-xl px-4 py-3 font-semibold text-white" style={{ background: "var(--marca)" }}>Criar ficha</Link>} /></>;
+    return <><Cabecalho titulo="Fichas" direita={acoesTopo} /><Vazio titulo="Nenhuma ficha criada" texto="Monte sua primeira ficha de treino." acao={<Link href="/fichas/nova" className="rounded-xl px-4 py-3 font-semibold text-white" style={{ background: "var(--marca)" }}>Criar ficha</Link>} /></>;
   }
 
   return (
     <>
-      <Cabecalho titulo="Fichas" sub={`${fichas.length} cadastradas`} direita={botaoNova} />
+      <Cabecalho titulo="Fichas" sub={`${fichas.length} cadastradas`} direita={acoesTopo} />
       <div className="space-y-2 px-4 pt-3">
         {fichas.map((f: any) => {
           const aviso = avisoValidade(f.data_validade);

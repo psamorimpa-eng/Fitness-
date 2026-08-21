@@ -14,7 +14,7 @@ export default async function NovaFicha() {
       .select("objetivo, nivel")
       .eq("usuario_id", usuario.id)
       .maybeSingle(),
-    supabase.rpc("catalogo_exercicios"),
+    supabase.rpc("catalogo_exercicios_v2"),
     supabase.rpc("exercicios_frequentes", { p_limite: 12 }),
   ]);
 
@@ -34,6 +34,9 @@ export default async function NovaFicha() {
         nivel: e.nivel,
         tipo: e.tipo,
         descricao: e.descricao,
+        instrucoes: e.instrucoes,
+        erros_comuns: e.erros_comuns,
+        grupos_secundarios: e.grupos_secundarios ?? [],
         imagem_url: e.imagem_url,
         video_url: e.video_url,
         grupo: e.grupo ?? "Outros",

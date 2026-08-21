@@ -1,22 +1,19 @@
 "use client";
 import { useFormState, useFormStatus } from "react-dom";
 import Link from "next/link";
-import { AlertTriangle, ChevronLeft } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronLeft } from "lucide-react";
 import { cadastrar } from "../acoes";
 import { Rotulo, Titulo } from "@/components/ui";
-
-const OBJETIVOS = ["Emagrecimento", "Hipertrofia", "Ganho de força", "Condicionamento físico",
-  "Reabilitação", "Saúde e qualidade de vida", "Definição muscular", "Melhora de desempenho esportivo"];
 
 const campo = {
   background: "var(--superficie-2)", border: "1px solid var(--linha)", color: "var(--texto)",
 };
 
-function Campo({ nome, rotulo, tipo = "text", obrigatorio }: { nome: string; rotulo: string; tipo?: string; obrigatorio?: boolean }) {
+function Campo({ nome, rotulo, tipo = "text", autoComplete }: { nome: string; rotulo: string; tipo?: string; autoComplete?: string }) {
   return (
     <label className="block">
       <Rotulo>{rotulo}</Rotulo>
-      <input name={nome} type={tipo} required={obrigatorio}
+      <input name={nome} type={tipo} required autoComplete={autoComplete}
         className="mt-1 w-full rounded-xl px-3 py-3 outline-none" style={campo} />
     </label>
   );
@@ -34,7 +31,7 @@ function Botao() {
 }
 
 export default function Cadastro() {
-  const [estado, acao] = useFormState(cadastrar, null as { erro?: string } | null);
+  const [estado, acao] = useFormState(cadastrar, null as { erro?: string; ok?: string } | null);
 
   return (
     <main className="mx-auto w-full max-w-md px-5 py-6">
@@ -43,36 +40,18 @@ export default function Cadastro() {
       </Link>
       <Titulo tamanho={28}>Criar conta</Titulo>
       <p className="mb-6 mt-1 text-sm" style={{ color: "var(--dim)" }}>
-        Leva um minuto. Seu personal vincula a ficha depois.
+        Crie sua conta para montar fichas, registrar treinos e acompanhar sua evolução.
       </p>
 
       <form action={acao} className="space-y-3">
-        <Campo nome="nome" rotulo="Nome completo" obrigatorio />
-        <Campo nome="email" rotulo="E-mail" tipo="email" obrigatorio />
-        <div className="grid grid-cols-2 gap-3">
-          <Campo nome="telefone" rotulo="Telefone" tipo="tel" />
-          <Campo nome="nascimento" rotulo="Nascimento" tipo="date" />
-          <label className="block">
-            <Rotulo>Sexo</Rotulo>
-            <select name="sexo" className="mt-1 w-full rounded-xl px-3 py-3 outline-none" style={campo}>
-              <option>Masculino</option><option>Feminino</option><option>Prefiro não informar</option>
-            </select>
-          </label>
-          <label className="block">
-            <Rotulo>Objetivo</Rotulo>
-            <select name="objetivo" className="mt-1 w-full rounded-xl px-3 py-3 outline-none" style={campo}>
-              {OBJETIVOS.map((o) => <option key={o}>{o}</option>)}
-            </select>
-          </label>
-          <Campo nome="altura" rotulo="Altura (cm)" tipo="number" />
-          <Campo nome="peso" rotulo="Peso (kg)" tipo="number" />
-          <Campo nome="senha" rotulo="Senha" tipo="password" obrigatorio />
-          <Campo nome="senha2" rotulo="Confirmar senha" tipo="password" obrigatorio />
-        </div>
+        <Campo nome="nome" rotulo="Nome" autoComplete="name" />
+        <Campo nome="email" rotulo="E mail" tipo="email" autoComplete="email" />
+        <Campo nome="senha" rotulo="Senha" tipo="password" autoComplete="new-password" />
+        <Campo nome="senha2" rotulo="Confirmar senha" tipo="password" autoComplete="new-password" />
 
         <label className="flex items-start gap-2 py-2 text-sm" style={{ color: "var(--dim)" }}>
           <input type="checkbox" name="termos" className="mt-1" />
-          <span>Li e aceito os termos de uso e a política de privacidade, incluindo o tratamento dos meus dados conforme a LGPD.</span>
+          <span>Li e aceito os termos de uso e a política de privacidade.</span>
         </label>
 
         <Botao />
@@ -82,6 +61,19 @@ export default function Cadastro() {
         <div className="mt-4 flex gap-2 rounded-xl px-3 py-3 text-sm"
           style={{ background: "var(--marca-suave)", color: "var(--marca)" }}>
           <AlertTriangle size={16} className="mt-0.5 shrink-0" /> {estado.erro}
+        </div>
+      )}
+
+      {estado?.ok && (
+        <div className="mt-4 flex gap-2 rounded-xl px-3 py-3 text-sm"
+          style={{ background: "rgba(22,163,74,.12)", color: "var(--ok)" }}>
+          <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+          <div>
+            {estado.ok}
+            <div className="mt-2">
+              <Link href="/login" className="font-semibold underline">Voltar para o login</Link>
+            </div>
+          </div>
         </div>
       )}
     </main>

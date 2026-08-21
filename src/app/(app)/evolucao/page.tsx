@@ -17,6 +17,16 @@ type SessaoExercicio = {
   volume: number;
 };
 
+type SerieHistorico = {
+  dataTreino: string;
+  treinoId: string;
+  carga: number;
+  reps: number;
+  volume: number;
+  registrada_em?: string | null;
+  [chave: string]: unknown;
+};
+
 type ResumoExercicio = {
   nome: string;
   vezes: number;
@@ -31,7 +41,7 @@ type ResumoExercicio = {
   sessoes: SessaoExercicio[];
 };
 
-export default async function Evolucao({ searchParams }: { searchParams: { aluno?: string } }) {
+export default async function Evolucao() {
   const usuario = await usuarioAtual();
   if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
@@ -57,7 +67,7 @@ export default async function Evolucao({ searchParams }: { searchParams: { aluno
   const progressao = new Map<string, { data: string; carga: number }[]>();
   const porExercicio = new Map<string, {
     nome: string;
-    series: any[];
+    series: SerieHistorico[];
     sessoes: Map<string, SessaoExercicio>;
   }>();
 
@@ -73,7 +83,11 @@ export default async function Evolucao({ searchParams }: { searchParams: { aluno
 
       melhorPorExercicio.set(nome, Math.max(melhorPorExercicio.get(nome) ?? 0, carga));
 
-      const atual = porExercicio.get(chave) ?? { nome, series: [], sessoes: new Map<string, SessaoExercicio>() };
+      const atual = porExercicio.get(chave) ?? {
+        nome,
+        series: [] as SerieHistorico[],
+        sessoes: new Map<string, SessaoExercicio>(),
+      };
       atual.nome = nome;
       atual.series.push({ ...s, dataTreino: t.data, treinoId: t.id, carga, reps, volume });
 
@@ -105,7 +119,7 @@ export default async function Evolucao({ searchParams }: { searchParams: { aluno
       return String(b.registrada_em ?? "").localeCompare(String(a.registrada_em ?? ""));
     });
     const ultima = ordenadas[0];
-    const melhorSerie = ex.series.reduce((melhor: any, s: any) =>
+    const melhorSerie = ex.series.reduce<SerieHistorico | null>((melhor, s) =>
       Number(s.volume) > Number(melhor?.volume ?? -1) ? s : melhor, null);
     const sessoes = [...ex.sessoes.values()].sort((a, b) => b.data.localeCompare(a.data));
 
@@ -113,9 +127,9 @@ export default async function Evolucao({ searchParams }: { searchParams: { aluno
       nome: ex.nome,
       vezes: sessoes.length,
       totalSeries: ex.series.length,
-      totalRepeticoes: ex.series.reduce((total: number, s: any) => total + Number(s.reps ?? 0), 0),
-      volumeTotal: ex.series.reduce((total: number, s: any) => total + Number(s.volume ?? 0), 0),
-      melhorCarga: Math.max(...ex.series.map((s: any) => Number(s.carga ?? 0))),
+      totalRepeticoes: ex.series.reduce((total, s) => total + Number(s.reps ?? 0), 0),
+      volumeTotal: ex.series.reduce((total, s) => total + Number(s.volume ?? 0), 0),
+      melhorCarga: Math.max(...ex.series.map((s) => Number(s.carga ?? 0))),
       melhorSerie: {
         carga: Number(melhorSerie?.carga ?? 0),
         repeticoes: Number(melhorSerie?.reps ?? 0),

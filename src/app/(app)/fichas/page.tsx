@@ -13,19 +13,11 @@ export default async function Fichas() {
   if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
 
-  const consulta = supabase
+  const { data: fichas } = await supabase
     .from("fichas")
-    .select("id, nome, objetivo, data_inicio, data_validade, status, aluno_id, divisoes_treino(id), usuarios!fichas_aluno_id_fkey(nome)")
+    .select("id, nome, objetivo, data_inicio, data_validade, status, aluno_id, divisoes_treino(id)")
+    .eq("aluno_id", usuario.id)
     .order("data_inicio", { ascending: false });
-
-  const [{ data: fichas }, { data: vinculados }] = await Promise.all([
-    usuario.papel === "admin" ? consulta : consulta.eq("personal_id", usuario.id),
-    supabase.from("perfis_aluno")
-      .select("usuario_id, usuarios!perfis_aluno_usuario_id_fkey(nome)")
-      .eq("personal_id", usuario.id),
-  ]);
-
-  const alunos = (vinculados ?? []).map((a: any) => ({ id: a.usuario_id, nome: a.usuarios?.nome ?? "Sem nome" }));
 
   const botaoNova = (
     <Link href="/fichas/nova"
@@ -39,7 +31,7 @@ export default async function Fichas() {
     return (
       <>
         <Cabecalho titulo="Fichas" direita={botaoNova} />
-        <Vazio titulo="Nenhuma ficha criada" texto="Monte a primeira ficha para um dos seus alunos."
+        <Vazio titulo="Nenhuma ficha criada" texto="Monte sua primeira ficha de treino."
           acao={<Link href="/fichas/nova" className="rounded-xl px-4 py-3 font-semibold text-white"
             style={{ background: "var(--marca)" }}>Criar ficha</Link>} />
       </>
@@ -56,7 +48,7 @@ export default async function Fichas() {
               <div className="min-w-0">
                 <Titulo tamanho={16}>{f.nome}</Titulo>
                 <div className="text-xs" style={{ color: "var(--dim)" }}>
-                  {f.usuarios?.nome} · {f.divisoes_treino?.length ?? 0} divisões
+                  {f.objetivo ?? "Treino"} · {f.divisoes_treino?.length ?? 0} divisões
                 </div>
                 <div className="mt-1 text-xs" style={{ color: "var(--fraco)" }}>
                   {fmtData(f.data_inicio)} a {fmtData(f.data_validade)}
@@ -67,8 +59,8 @@ export default async function Fichas() {
             <div className="mt-3 flex flex-wrap gap-2">
               <Link href={`/fichas/${f.id}/editar`} className="rounded-xl px-3 py-2 text-sm"
                 style={{ border: "1px solid var(--linha)" }}>Editar</Link>
-              <AcoesFicha fichaId={f.id} status={f.status} alunos={alunos} />
-              <Link href={`/historico?aluno=${f.aluno_id}`} className="rounded-xl px-3 py-2 text-sm"
+              <AcoesFicha fichaId={f.id} status={f.status} />
+              <Link href="/historico" className="rounded-xl px-3 py-2 text-sm"
                 style={{ border: "1px solid var(--linha)" }}>Treinos</Link>
             </div>
           </Cartao>

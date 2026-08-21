@@ -13,7 +13,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
       <ManterSessao />
       <RegistrarServiceWorker />
       {children}
-      <NavegacaoInferior />
+      <NavegacaoInferior papel={usuario.papel} />
     </div>
   );
 }

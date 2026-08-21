@@ -14,16 +14,57 @@ export default async function Treino() {
   const supabase = criarClienteServidor();
 
   await supabase.rpc("vencer_minhas_fichas");
-  const [{ data: ficha }, { data: abertos }] = await Promise.all([
-    supabase.from("fichas").select("*, divisoes_treino(*, series_planejadas(*, exercicios(nome)))").eq("aluno_id", usuario.id).eq("status", "ativa").maybeSingle(),
+  const [{ data: ficha, error: erroFicha }, { data: abertos }] = await Promise.all([
+    supabase.from("fichas").select("*").eq("aluno_id", usuario.id).eq("status", "ativa").maybeSingle(),
     supabase.from("treinos_realizados").select("id, divisao_id, inicio_em").eq("aluno_id", usuario.id).eq("status", "em_andamento").order("inicio_em", { ascending: false }),
   ]);
+
+  if (erroFicha) {
+    console.error("Falha ao carregar ficha ativa:", erroFicha.message);
+    return <Vazio titulo="Não foi possível carregar sua ficha" texto="Seus dados continuam salvos. Atualize a página e tente novamente." />;
+  }
 
   if (!ficha) {
     return <Vazio titulo="Nenhuma ficha ativa" texto="Crie uma nova ficha ou consulte suas fichas vencidas/arquivadas." acao={<Link href="/fichas" className="rounded-xl px-4 py-3 font-semibold text-white" style={{ background: "var(--marca)" }}>Ver minhas fichas</Link>} />;
   }
 
-  const divisoes = [...(ficha.divisoes_treino ?? [])].sort((a: any, b: any) => a.ordem - b.ordem);
+  const { data: divisoesDados, error: erroDivisoes } = await supabase
+    .from("divisoes_treino")
+    .select("id, ficha_id, codigo, nome, ordem")
+    .eq("ficha_id", ficha.id)
+    .order("ordem");
+
+  if (erroDivisoes) {
+    console.error("Falha ao carregar divisões:", erroDivisoes.message);
+    return <Vazio titulo="Não foi possível carregar os treinos" texto="Sua ficha permanece salva. Atualize a página e tente novamente." />;
+  }
+
+  const idsDivisoes = (divisoesDados ?? []).map((d: any) => d.id);
+  const [{ data: seriesDados, error: erroSeries }, { data: catalogo, error: erroCatalogo }] = await Promise.all([
+    idsDivisoes.length
+      ? supabase.from("series_planejadas").select("id, divisao_id, exercicio_id, ordem, series, rep_min, rep_max").in("divisao_id", idsDivisoes).order("ordem")
+      : Promise.resolve({ data: [], error: null } as any),
+    supabase.rpc("catalogo_exercicios_v2"),
+  ]);
+
+  if (erroSeries || erroCatalogo) {
+    console.error("Falha ao montar lista de treinos:", { series: erroSeries?.message, catalogo: erroCatalogo?.message });
+    return <Vazio titulo="Não foi possível carregar os exercícios" texto="Sua ficha permanece salva. Atualize a página e tente novamente." />;
+  }
+
+  const nomePorExercicio = new Map((catalogo ?? []).map((e: any) => [String(e.id), String(e.nome)]));
+  const seriesPorDivisao = new Map<string, any[]>();
+  (seriesDados ?? []).forEach((s: any) => {
+    const lista = seriesPorDivisao.get(String(s.divisao_id)) ?? [];
+    lista.push({ ...s, exercicios: { nome: nomePorExercicio.get(String(s.exercicio_id)) ?? "Exercício" } });
+    seriesPorDivisao.set(String(s.divisao_id), lista);
+  });
+
+  const divisoes = (divisoesDados ?? []).map((d: any) => ({
+    ...d,
+    series_planejadas: seriesPorDivisao.get(String(d.id)) ?? [],
+  }));
+
   const aviso = avisoValidade(ficha.data_validade);
   const abertoPorDivisao = new Map((abertos ?? []).map((t: any) => [t.divisao_id, t]));
 

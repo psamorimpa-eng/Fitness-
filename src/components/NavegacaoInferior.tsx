@@ -1,41 +1,34 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Dumbbell, History, TrendingUp, User, Users, ClipboardList } from "lucide-react";
-import type { Papel } from "@/lib/tipos";
+import { Home, ClipboardList, Dumbbell, History, TrendingUp, User } from "lucide-react";
 
-const MENUS: Record<Papel, [string, string, typeof Home][]> = {
-  aluno: [
-    ["/inicio", "Início", Home], ["/treino", "Treino", Dumbbell], ["/historico", "Histórico", History],
-    ["/evolucao", "Evolução", TrendingUp], ["/perfil", "Perfil", User],
-  ],
-  personal: [
-    ["/inicio", "Início", Home], ["/alunos", "Alunos", Users], ["/fichas", "Fichas", ClipboardList],
-    ["/exercicios", "Exercícios", Dumbbell], ["/perfil", "Perfil", User],
-  ],
-  admin: [
-    ["/inicio", "Início", Home], ["/usuarios", "Usuários", Users], ["/exercicios", "Exercícios", Dumbbell],
-    ["/academias", "Unidades", ClipboardList], ["/perfil", "Perfil", User],
-  ],
-};
+const ITENS = [
+  { href: "/inicio", rotulo: "Início", Icone: Home },
+  { href: "/fichas", rotulo: "Fichas", Icone: ClipboardList },
+  { href: "/treino", rotulo: "Treino", Icone: Dumbbell },
+  { href: "/historico", rotulo: "Histórico", Icone: History },
+  { href: "/evolucao", rotulo: "Evolução", Icone: TrendingUp },
+  { href: "/perfil", rotulo: "Perfil", Icone: User },
+];
 
-export default function NavegacaoInferior({ papel }: { papel: Papel }) {
-  const caminho = usePathname();
+export default function NavegacaoInferior() {
+  const pathname = usePathname();
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40">
-      <div className="mx-auto flex max-w-md"
-        style={{ background: "var(--superficie)", borderTop: "1px solid var(--linha)", paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {MENUS[papel].map(([href, rotulo, Icone]) => {
-          const ativo = caminho === href || caminho.startsWith(href + "/");
-          return (
-            <Link key={href} href={href} className="flex flex-1 flex-col items-center gap-1 py-2"
-              style={{ color: ativo ? "var(--marca)" : "var(--fraco)" }}>
-              <Icone size={20} strokeWidth={ativo ? 2.4 : 1.8} />
-              <span className="display" style={{ fontSize: 10, letterSpacing: "0.08em" }}>{rotulo}</span>
-            </Link>
-          );
-        })}
-      </div>
+    <nav className="fixed bottom-0 left-1/2 z-40 grid w-full max-w-md -translate-x-1/2 grid-cols-6 px-1 pb-[max(8px,env(safe-area-inset-bottom))] pt-2"
+      style={{ background: "var(--superficie)", borderTop: "1px solid var(--linha)" }}>
+      {ITENS.map(({ href, rotulo, Icone }) => {
+        const ativo = pathname === href || pathname.startsWith(`${href}/`);
+        return (
+          <Link key={href} href={href}
+            className="flex min-w-0 flex-col items-center gap-1 py-1 text-[10px]"
+            style={{ color: ativo ? "var(--marca)" : "var(--dim)" }}>
+            <Icone size={19} strokeWidth={ativo ? 2.5 : 2} />
+            <span className="truncate">{rotulo}</span>
+          </Link>
+        );
+      })}
     </nav>
   );
 }

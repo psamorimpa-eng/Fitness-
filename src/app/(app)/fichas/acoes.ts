@@ -1,6 +1,5 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { criarClienteServidor } from "@/lib/supabase/server";
 
 export interface ItemFicha {
@@ -39,9 +38,7 @@ export interface FichaCompleta {
   divisoes: DivisaoFicha[];
 }
 
-/** Salva a ficha inteira em uma transação. Retorna o id ou uma mensagem de erro. */
 export async function salvarFicha(ficha: FichaCompleta) {
-  if (!ficha.aluno_id) return { erro: "Escolha o aluno antes de salvar." };
   if (!ficha.nome.trim()) return { erro: "A ficha precisa de um nome." };
   if (!ficha.divisoes.length) return { erro: "Crie pelo menos uma divisão de treino." };
   if (ficha.divisoes.every((d) => d.itens.length === 0)) {
@@ -54,19 +51,8 @@ export async function salvarFicha(ficha: FichaCompleta) {
   if (error) return { erro: error.message };
   revalidatePath("/fichas");
   revalidatePath("/treino");
+  revalidatePath("/inicio");
   return { id: data as string };
-}
-
-/** Copia a ficha para outro aluno, mantendo divisões e parâmetros. */
-export async function copiarFicha(fichaId: string, alunoDestino: string) {
-  const supabase = criarClienteServidor();
-  const { data, error } = await supabase.rpc("duplicar_ficha", {
-    p_ficha: fichaId,
-    p_aluno: alunoDestino,
-  });
-  if (error) return { erro: error.message };
-  revalidatePath("/fichas");
-  redirect(`/fichas/${data}/editar`);
 }
 
 export async function arquivarFicha(fichaId: string) {
@@ -74,5 +60,7 @@ export async function arquivarFicha(fichaId: string) {
   const { error } = await supabase.from("fichas").update({ status: "arquivada" }).eq("id", fichaId);
   if (error) return { erro: error.message };
   revalidatePath("/fichas");
+  revalidatePath("/treino");
+  revalidatePath("/inicio");
   return { ok: true };
 }

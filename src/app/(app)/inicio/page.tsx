@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Play, ChevronRight, MessageSquare } from "lucide-react";
+import { Play, ChevronRight } from "lucide-react";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import { Cartao, Rotulo, Titulo, Indicador, Barra, FaixaAnilhas, Vazio } from "@/components/ui";
 import { fmtData, semanaDe } from "@/lib/formato";
@@ -13,29 +13,7 @@ export default async function Inicio() {
   if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
 
-  if (usuario.papel !== "aluno") {
-    const { count: alunos } = await supabase
-      .from("perfis_aluno").select("*", { count: "exact", head: true })
-      .eq("personal_id", usuario.id);
-    return (
-      <>
-        <div className="px-4 pb-3 pt-5">
-          <Rotulo>Painel do {usuario.papel === "admin" ? "administrador" : "personal"}</Rotulo>
-          <Titulo tamanho={28}>Olá, {usuario.nome.split(" ")[0]}</Titulo>
-        </div>
-        <div className="grid grid-cols-2 gap-3 px-4">
-          <Indicador rotulo="Alunos vinculados" valor={alunos ?? 0} />
-          <Indicador rotulo="Fichas ativas" valor="-" />
-        </div>
-        <div className="px-4 pt-4">
-          <Cartao href="/alunos"><div className="flex items-center justify-between">
-            <Titulo tamanho={16}>Ver alunos</Titulo><ChevronRight size={18} /></div></Cartao>
-        </div>
-      </>
-    );
-  }
-
-  const [{ data: ficha }, { data: treinos }, { data: medidas }, { data: mensagens }] = await Promise.all([
+  const [{ data: ficha }, { data: treinos }, { data: medidas }] = await Promise.all([
     supabase.from("fichas")
       .select("*, divisoes_treino(*, series_planejadas(id))")
       .eq("aluno_id", usuario.id).eq("status", "ativa").maybeSingle(),
@@ -44,7 +22,6 @@ export default async function Inicio() {
       .eq("aluno_id", usuario.id).eq("status", "concluido").order("data", { ascending: false }).limit(40),
     supabase.from("medidas_corporais").select("peso_kg, data")
       .eq("aluno_id", usuario.id).order("data", { ascending: false }).limit(2),
-    supabase.from("mensagens").select("texto").eq("destinatario_id", usuario.id).is("lida_em", null).limit(1),
   ]);
 
   const meta = usuario.perfis_aluno?.meta_semanal ?? 3;
@@ -80,7 +57,14 @@ export default async function Inicio() {
             </Link>
           </div>
         ) : (
-          <Cartao><Vazio titulo="Nenhuma ficha ativa" texto="Seu personal ainda não publicou uma ficha para você." /></Cartao>
+          <Cartao>
+            <Vazio
+              titulo="Nenhuma ficha ativa"
+              texto="Crie sua ficha para começar a registrar seus treinos."
+              acao={<Link href="/fichas/nova" className="rounded-xl px-4 py-3 font-semibold text-white"
+                style={{ background: "var(--marca)" }}>Criar minha ficha</Link>}
+            />
+          </Cartao>
         )}
       </div>
 
@@ -99,21 +83,6 @@ export default async function Inicio() {
         <Indicador rotulo="Peso" valor={medidas?.[0]?.peso_kg ?? usuario.perfis_aluno?.peso_kg ?? "-"} unidade="kg" />
         <Indicador rotulo="Volume" valor={ultimo ? Math.round(Number(ultimo.volume_total ?? 0) / 1000) : 0} unidade="t" />
       </div>
-
-      {mensagens?.[0] && (
-        <div className="px-4 pt-3">
-          <Cartao href="/mensagens">
-            <div className="flex items-center gap-3">
-              <MessageSquare size={18} style={{ color: "var(--marca)" }} />
-              <div className="min-w-0 flex-1">
-                <Rotulo cor="var(--marca)">Aviso do personal</Rotulo>
-                <div className="truncate text-sm">{mensagens[0].texto}</div>
-              </div>
-              <ChevronRight size={18} style={{ color: "var(--fraco)" }} />
-            </div>
-          </Cartao>
-        </div>
-      )}
 
       {ultimo && (
         <div className="px-4 pt-3">

@@ -9,11 +9,22 @@ export default async function ExecucaoPage({ params }: { params: { divisaoId: st
   if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
 
-  const { data: divisao } = await supabase
-    .from("divisoes_treino")
-    .select("*, fichas(id, nome), series_planejadas(*, exercicios(id, nome, descricao, instrucoes, erros_comuns, imagem_url, video_url, categorias_musculares(nome), equipamentos(nome)))")
-    .eq("id", params.divisaoId)
-    .maybeSingle();
+  const [{ data: divisao }, { data: treinoAberto }] = await Promise.all([
+    supabase
+      .from("divisoes_treino")
+      .select("*, fichas(id, nome), series_planejadas(*, exercicios(id, nome, descricao, instrucoes, erros_comuns, imagem_url, video_url, categorias_musculares(nome), equipamentos(nome)))")
+      .eq("id", params.divisaoId)
+      .maybeSingle(),
+    supabase
+      .from("treinos_realizados")
+      .select("id, local_id, inicio_em, observacoes, ficha_nome_snapshot, divisao_codigo_snapshot, divisao_nome_snapshot, plano_snapshot, series_realizadas(id, exercicio_id, numero_serie, carga_kg, repeticoes, pse, aquecimento, registrada_em)")
+      .eq("aluno_id", usuario.id)
+      .eq("divisao_id", params.divisaoId)
+      .eq("status", "em_andamento")
+      .order("inicio_em", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   if (!divisao) notFound();
 
@@ -39,9 +50,11 @@ export default async function ExecucaoPage({ params }: { params: { divisaoId: st
     <ExecucaoTreino
       alunoId={usuario.id}
       fichaId={(divisao as any).fichas?.id ?? null}
+      fichaNome={(divisao as any).fichas?.nome ?? null}
       divisao={{ id: divisao.id, codigo: divisao.codigo, nome: divisao.nome }}
       itens={itens as any}
       ultimasCargas={ultimas}
+      treinoEmAndamento={treinoAberto as any}
     />
   );
 }

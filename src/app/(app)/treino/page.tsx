@@ -20,7 +20,14 @@ export default async function Treino() {
     .maybeSingle();
 
   if (!ficha) {
-    return <Vazio titulo="Nenhuma ficha ativa" texto="Assim que seu personal publicar a ficha, ela aparece aqui." />;
+    return (
+      <Vazio
+        titulo="Nenhuma ficha ativa"
+        texto="Crie sua ficha para começar a treinar."
+        acao={<Link href="/fichas/nova" className="rounded-xl px-4 py-3 font-semibold text-white"
+          style={{ background: "var(--marca)" }}>Criar minha ficha</Link>}
+      />
+    );
   }
 
   const divisoes = [...(ficha.divisoes_treino ?? [])].sort((a: any, b: any) => a.ordem - b.ordem);

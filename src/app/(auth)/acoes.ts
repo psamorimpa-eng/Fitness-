@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { criarClienteServidor } from "@/lib/supabase/server";
 
+const URL_APP = "https://minha-ficha-fitness.vercel.app";
+
 async function registrarAcesso(supabase: ReturnType<typeof criarClienteServidor>, usuarioId: string) {
   await supabase.from("usuarios")
     .update({ ultimo_acesso_em: new Date().toISOString() })
@@ -25,7 +27,7 @@ export async function entrar(_estado: unknown, form: FormData) {
 
   if (error || !data.user) {
     if (error?.code === "email_not_confirmed") {
-      return { erro: "Seu cadastro ainda está aguardando confirmação. Tente novamente em alguns segundos." };
+      return { erro: "Seu cadastro ainda está aguardando confirmação. Verifique seu e mail e tente novamente." };
     }
     return { erro: "E mail ou senha não conferem." };
   }
@@ -51,7 +53,10 @@ export async function cadastrar(_estado: unknown, form: FormData) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password: senha,
-    options: { data: { nome, papel: "aluno" } },
+    options: {
+      data: { nome, papel: "aluno" },
+      emailRedirectTo: `${URL_APP}/auth/callback?next=/inicio`,
+    },
   });
 
   if (error) {
@@ -63,7 +68,7 @@ export async function cadastrar(_estado: unknown, form: FormData) {
   if (!data.session) {
     const { data: login, error: erroLogin } = await supabase.auth.signInWithPassword({ email, password: senha });
     if (erroLogin || !login.user) {
-      return { ok: "Conta criada. Volte para o login e entre com seu e mail e senha." };
+      return { ok: "Conta criada. Verifique seu e mail para confirmar o cadastro e depois entre com sua senha." };
     }
     usuario = login.user;
   }
@@ -79,11 +84,10 @@ export async function recuperarSenha(_estado: unknown, form: FormData) {
 
   const supabase = criarClienteServidor();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: "https://fitness-rust-ten.vercel.app/auth/callback?next=/nova-senha",
+    redirectTo: `${URL_APP}/auth/callback?next=/nova-senha`,
   });
 
   if (error) return { erro: "Não foi possível enviar o link agora. Tente novamente em alguns minutos." };
-  // Mensagem neutra: não revela se o e mail existe na base.
   return { ok: "Se houver uma conta com esse e mail, você receberá um link para criar uma nova senha." };
 }
 

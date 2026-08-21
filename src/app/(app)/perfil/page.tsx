@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 const ATALHOS = [
   ["Minhas fichas", "/fichas"],
+  ["Meus exercícios", "/exercicios"],
   ["Histórico de treinos", "/historico"],
   ["Minha evolução", "/evolucao"],
 ];

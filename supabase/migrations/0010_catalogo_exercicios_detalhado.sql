@@ -36,7 +36,7 @@ as $$
       where es.exercicio_id = e.id
     ), array[]::text[]) as grupos_secundarios
   from public.exercicios e
-  left join public.categorias_musculares cm on cm.id = e.categoria_principal_id
+  left join public.categorias_musculares cm on cm.id = e.categoria_id
   left join public.equipamentos eq on eq.id = e.equipamento_id
   where e.ativo = true and (e.publico = true or e.criado_por = auth.uid())
   order by e.nome;

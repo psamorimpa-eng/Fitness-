@@ -20,9 +20,7 @@ export default async function EditarFicha({ params }: { params: { fichaId: strin
       .select("objetivo, nivel")
       .eq("usuario_id", usuario.id)
       .maybeSingle(),
-    supabase.from("exercicios")
-      .select("id, nome, nivel, tipo, descricao, imagem_url, video_url, categorias_musculares(nome), equipamentos(nome)")
-      .eq("ativo", true).order("nome"),
+    supabase.rpc("catalogo_exercicios"),
     supabase.rpc("exercicios_frequentes", { p_limite: 12 }),
   ]);
 
@@ -64,8 +62,8 @@ export default async function EditarFicha({ params }: { params: { fichaId: strin
         descricao: e.descricao,
         imagem_url: e.imagem_url,
         video_url: e.video_url,
-        grupo: e.categorias_musculares?.nome ?? "Outros",
-        equipamento: e.equipamentos?.nome ?? "Outros",
+        grupo: e.grupo ?? "Outros",
+        equipamento: e.equipamento ?? "Outros",
       }))}
       frequentes={(frequentes ?? []).map((f: any) => f.exercicio_id)}
       fichaExistente={{

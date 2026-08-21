@@ -1,21 +1,53 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import ExecucaoTreino from "@/components/ExecucaoTreino";
 import ManterTelaAcordada from "@/components/ManterTelaAcordada";
+import { Vazio } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
+
+function erroCarregamento(texto: string) {
+  return (
+    <Vazio
+      titulo="Não foi possível carregar o treino"
+      texto={texto}
+      acao={
+        <Link href="/treino" className="rounded-xl px-4 py-3 font-semibold text-white" style={{ background: "var(--marca)" }}>
+          Voltar aos treinos
+        </Link>
+      }
+    />
+  );
+}
 
 export default async function ExecucaoPage({ params }: { params: { divisaoId: string } }) {
   const usuario = await usuarioAtual();
   if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
 
-  const [{ data: divisao }, { data: treinoAberto }] = await Promise.all([
-    supabase
-      .from("divisoes_treino")
-      .select("*, fichas(id, nome), series_planejadas(*, exercicios(id, nome, descricao, instrucoes, erros_comuns, imagem_url, video_url, categorias_musculares(nome), equipamentos(nome)))")
-      .eq("id", params.divisaoId)
-      .maybeSingle(),
+  // Evita embeds profundos do PostgREST. O relacionamento de exercícios possui mais de um
+  // caminho possível e retornava HTTP 300, que antes era interpretado como divisão inexistente.
+  const { data: divisao, error: erroDivisao } = await supabase
+    .from("divisoes_treino")
+    .select("id, ficha_id, codigo, nome, ordem")
+    .eq("id", params.divisaoId)
+    .maybeSingle();
+
+  if (erroDivisao) {
+    console.error("Falha ao carregar divisão do treino:", erroDivisao.message);
+    return erroCarregamento("O servidor não conseguiu ler a divisão. Tente novamente.");
+  }
+  if (!divisao) notFound();
+
+  const [
+    { data: ficha, error: erroFicha },
+    { data: seriesPlanejadas, error: erroSeries },
+    { data: treinoAberto, error: erroTreinoAberto },
+    { data: catalogo, error: erroCatalogo },
+  ] = await Promise.all([
+    supabase.from("fichas").select("id, nome, aluno_id").eq("id", divisao.ficha_id).maybeSingle(),
+    supabase.from("series_planejadas").select("*").eq("divisao_id", divisao.id).order("ordem"),
     supabase
       .from("treinos_realizados")
       .select("id, local_id, inicio_em, observacoes, ficha_nome_snapshot, divisao_codigo_snapshot, divisao_nome_snapshot, plano_snapshot, series_realizadas(id, exercicio_id, numero_serie, carga_kg, repeticoes, pse, aquecimento, registrada_em)")
@@ -25,9 +57,33 @@ export default async function ExecucaoPage({ params }: { params: { divisaoId: st
       .order("inicio_em", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase.rpc("catalogo_exercicios_v2"),
   ]);
 
-  if (!divisao) notFound();
+  if (erroFicha || erroSeries || erroTreinoAberto || erroCatalogo) {
+    console.error("Falha ao montar execução do treino:", {
+      ficha: erroFicha?.message,
+      series: erroSeries?.message,
+      treino: erroTreinoAberto?.message,
+      catalogo: erroCatalogo?.message,
+    });
+    return erroCarregamento("Seus dados continuam salvos. Recarregue a página ou volte aos treinos e tente novamente.");
+  }
+  if (!ficha) notFound();
+
+  const porId = new Map(
+    (catalogo ?? []).map((e: any) => [String(e.id), {
+      id: e.id,
+      nome: e.nome,
+      descricao: e.descricao,
+      instrucoes: e.instrucoes,
+      erros_comuns: e.erros_comuns,
+      imagem_url: e.imagem_url,
+      video_url: e.video_url,
+      categorias_musculares: e.grupo ? { nome: e.grupo } : null,
+      equipamentos: e.equipamento ? { nome: e.equipamento } : null,
+    }])
+  );
 
   const { data: historico } = await supabase
     .from("series_realizadas")
@@ -45,18 +101,17 @@ export default async function ExecucaoPage({ params }: { params: { divisaoId: st
     }
   });
 
-  let itens: any[] = [...(divisao.series_planejadas ?? [])].sort((a: any, b: any) => a.ordem - b.ordem);
-  const snapshot = Array.isArray((treinoAberto as any)?.plano_snapshot) ? (treinoAberto as any).plano_snapshot as any[] : [];
+  let itens: any[] = (seriesPlanejadas ?? []).map((s: any) => ({
+    ...s,
+    exercicios: porId.get(String(s.exercicio_id)) ?? { id: s.exercicio_id, nome: "Exercício" },
+  }));
+
+  const snapshot = Array.isArray((treinoAberto as any)?.plano_snapshot)
+    ? (treinoAberto as any).plano_snapshot as any[]
+    : [];
 
   // Um treino já iniciado sempre usa o plano congelado no momento do início.
   if (snapshot.length) {
-    const ids = snapshot.map((p) => String(p.exercicio_id)).filter(Boolean);
-    const { data: exerciciosSnapshot } = await supabase
-      .from("exercicios")
-      .select("id, nome, descricao, instrucoes, erros_comuns, imagem_url, video_url, categorias_musculares(nome), equipamentos(nome)")
-      .in("id", ids);
-    const porId = new Map((exerciciosSnapshot ?? []).map((e: any) => [e.id, e]));
-
     itens = snapshot
       .map((p: any, i: number) => {
         const exAtual: any = porId.get(String(p.exercicio_id));
@@ -86,8 +141,8 @@ export default async function ExecucaoPage({ params }: { params: { divisaoId: st
       <ManterTelaAcordada />
       <ExecucaoTreino
         alunoId={usuario.id}
-        fichaId={(divisao as any).fichas?.id ?? null}
-        fichaNome={(treinoAberto as any)?.ficha_nome_snapshot ?? (divisao as any).fichas?.nome ?? null}
+        fichaId={ficha.id}
+        fichaNome={(treinoAberto as any)?.ficha_nome_snapshot ?? ficha.nome ?? null}
         divisao={{
           id: divisao.id,
           codigo: (treinoAberto as any)?.divisao_codigo_snapshot ?? divisao.codigo,

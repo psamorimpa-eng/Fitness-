@@ -3,6 +3,50 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { criarClienteServidor } from "@/lib/supabase/server";
 
+const EMAIL_PADRAO = "aluno@fichafitness.app";
+const SENHA_PADRAO = "123456";
+
+export async function entrarPadrao(_estado: unknown) {
+  const supabase = criarClienteServidor();
+
+  const { error: loginError } = await supabase.auth.signInWithPassword({
+    email: EMAIL_PADRAO,
+    password: SENHA_PADRAO,
+  });
+
+  if (loginError) {
+    const { error: cadastroError } = await supabase.auth.signUp({
+      email: EMAIL_PADRAO,
+      password: SENHA_PADRAO,
+      options: {
+        data: {
+          nome: "Usuário Padrão",
+          papel: "aluno",
+          objetivo: "Condicionamento físico",
+        },
+      },
+    });
+
+    if (cadastroError) {
+      console.error("Falha ao criar acesso padrão:", cadastroError.message);
+      return { erro: "Não foi possível preparar o acesso padrão." };
+    }
+
+    const { error: novoLoginError } = await supabase.auth.signInWithPassword({
+      email: EMAIL_PADRAO,
+      password: SENHA_PADRAO,
+    });
+
+    if (novoLoginError) {
+      console.error("Falha no acesso padrão:", novoLoginError.message);
+      return { erro: "A conta padrão existe, mas o acesso ainda não foi liberado no Supabase." };
+    }
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/inicio");
+}
+
 export async function entrar(_estado: unknown, form: FormData) {
   const supabase = criarClienteServidor();
   const { error } = await supabase.auth.signInWithPassword({

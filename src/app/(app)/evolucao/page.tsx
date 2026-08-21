@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Ruler } from "lucide-react";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import { Cabecalho, Cartao, Indicador, Rotulo, Titulo, Vazio } from "@/components/ui";
 import GraficosEvolucao from "@/components/GraficosEvolucao";
@@ -57,12 +59,10 @@ export default async function Evolucao() {
   ]);
 
   const lista = (treinos ?? []) as unknown as TreinoComSeries[];
-  if (!lista.length) {
-    return <Vazio titulo="Sem dados de evolução" texto="Os gráficos aparecem depois do primeiro treino registrado." />;
-  }
-
   const meta = usuario.perfis_aluno?.meta_semanal ?? 3;
-  const tempoMedio = Math.round(lista.reduce((t, s) => t + (s.duracao_min ?? 0), 0) / lista.length);
+  const tempoMedio = lista.length
+    ? Math.round(lista.reduce((t, s) => t + (s.duracao_min ?? 0), 0) / lista.length)
+    : 0;
 
   const progressao = new Map<string, { data: string; carga: number }[]>();
   const porExercicio = new Map<string, {
@@ -142,63 +142,89 @@ export default async function Evolucao() {
     };
   }).sort((a, b) => b.ultimoTreino.localeCompare(a.ultimoTreino) || a.nome.localeCompare(b.nome));
 
+  const botaoMedidas = (
+    <Link href="/evolucao/medidas" className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold"
+      style={{ border: "1px solid var(--linha)", color: "var(--marca)" }}>
+      <Ruler size={15} /> Medidas
+    </Link>
+  );
+
+  const semDados = !lista.length && !(medidas?.length);
+
   return (
     <>
-      <Cabecalho titulo="Evolução" sub={`${lista.length} treinos concluídos`} />
-      <div className="grid grid-cols-2 gap-3 px-4 pt-3">
-        <Indicador rotulo="Treinos" valor={lista.length} />
-        <Indicador rotulo="Adesão à ficha" valor={adesao(lista, meta)} unidade="%" />
-        <Indicador rotulo="Tempo médio" valor={tempoMedio} unidade="min" />
-        <Indicador rotulo="Peso atual" valor={medidas?.at(-1)?.peso_kg ?? "-"} unidade="kg" />
-      </div>
+      <Cabecalho titulo="Evolução" sub={`${lista.length} treinos concluídos`} direita={botaoMedidas} />
 
-      <GraficosEvolucao
-        volume={volumePorSemana(lista)}
-        frequencia={frequenciaPorSemana(lista)}
-        medidas={(medidas ?? []).map((m: any) => ({ data: m.data, peso: m.peso_kg, gordura: m.gordura_pct }))}
-        progressao={Object.fromEntries(progressao)}
-      />
+      {semDados ? (
+        <Vazio
+          titulo="Comece seu histórico de evolução"
+          texto="Você pode registrar medidas corporais mesmo antes do primeiro treino."
+          acao={
+            <Link href="/evolucao/medidas" className="rounded-xl px-4 py-3 font-semibold text-white" style={{ background: "var(--marca)" }}>
+              Registrar medidas
+            </Link>
+          }
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 px-4 pt-3">
+            <Indicador rotulo="Treinos" valor={lista.length} />
+            <Indicador rotulo="Adesão à ficha" valor={adesao(lista, meta)} unidade="%" />
+            <Indicador rotulo="Tempo médio" valor={tempoMedio || "-"} unidade={tempoMedio ? "min" : undefined} />
+            <Indicador rotulo="Peso atual" valor={medidas?.at(-1)?.peso_kg ?? "-"} unidade={medidas?.at(-1)?.peso_kg != null ? "kg" : undefined} />
+          </div>
 
-      <section className="px-4 pb-6 pt-4">
-        <div className="mb-3">
-          <Titulo tamanho={20}>Histórico por exercício</Titulo>
-          <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
-            Cargas, repetições e volume são preservados por treino e nunca substituem registros anteriores.
-          </p>
-        </div>
+          <GraficosEvolucao
+            volume={volumePorSemana(lista)}
+            frequencia={frequenciaPorSemana(lista)}
+            medidas={(medidas ?? []).map((m: any) => ({ data: m.data, peso: m.peso_kg, gordura: m.gordura_pct }))}
+            progressao={Object.fromEntries(progressao)}
+          />
+        </>
+      )}
 
-        <div className="space-y-3">
-          {resumos.map((ex) => (
-            <Cartao key={ex.nome}>
-              <Titulo tamanho={16}>{ex.nome}</Titulo>
-              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                <div><Rotulo>Melhor carga</Rotulo><span className="numero">{ex.melhorCarga} kg</span></div>
-                <div><Rotulo>Melhor série</Rotulo><span className="numero">{ex.melhorSerie.carga} kg × {ex.melhorSerie.repeticoes}</span></div>
-                <div><Rotulo>Último treino</Rotulo><span>{fmtData(ex.ultimoTreino)}</span></div>
-                <div><Rotulo>Último resultado</Rotulo><span className="numero">{ex.ultimaCarga} kg × {ex.ultimasReps}</span></div>
-                <div><Rotulo>Vezes realizado</Rotulo><span className="numero">{ex.vezes}</span></div>
-                <div><Rotulo>Volume acumulado</Rotulo><span className="numero">{Math.round(ex.volumeTotal)} kg</span></div>
-              </div>
+      {!!resumos.length && (
+        <section className="px-4 pb-6 pt-4">
+          <div className="mb-3">
+            <Titulo tamanho={20}>Histórico por exercício</Titulo>
+            <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
+              Cargas, repetições e volume são preservados por treino e nunca substituem registros anteriores.
+            </p>
+          </div>
 
-              <div className="mt-3 overflow-hidden rounded-xl" style={{ border: "1px solid var(--linha)" }}>
-                {ex.sessoes.slice(0, 6).map((s, i) => (
-                  <div key={s.treinoId} className="grid grid-cols-[1fr_auto] gap-3 px-3 py-2 text-xs"
-                    style={{ borderTop: i ? "1px solid var(--linha)" : undefined }}>
-                    <div>
-                      <div>{fmtData(s.data)}</div>
-                      <div style={{ color: "var(--dim)" }}>{s.series} séries · {s.repeticoes} reps</div>
+          <div className="space-y-3">
+            {resumos.map((ex) => (
+              <Cartao key={ex.nome}>
+                <Titulo tamanho={16}>{ex.nome}</Titulo>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div><Rotulo>Melhor carga</Rotulo><span className="numero">{ex.melhorCarga} kg</span></div>
+                  <div><Rotulo>Melhor série</Rotulo><span className="numero">{ex.melhorSerie.carga} kg × {ex.melhorSerie.repeticoes}</span></div>
+                  <div><Rotulo>Último treino</Rotulo><span>{fmtData(ex.ultimoTreino)}</span></div>
+                  <div><Rotulo>Último resultado</Rotulo><span className="numero">{ex.ultimaCarga} kg × {ex.ultimasReps}</span></div>
+                  <div><Rotulo>Vezes realizado</Rotulo><span className="numero">{ex.vezes}</span></div>
+                  <div><Rotulo>Volume acumulado</Rotulo><span className="numero">{Math.round(ex.volumeTotal)} kg</span></div>
+                </div>
+
+                <div className="mt-3 overflow-hidden rounded-xl" style={{ border: "1px solid var(--linha)" }}>
+                  {ex.sessoes.slice(0, 6).map((s, i) => (
+                    <div key={s.treinoId} className="grid grid-cols-[1fr_auto] gap-3 px-3 py-2 text-xs"
+                      style={{ borderTop: i ? "1px solid var(--linha)" : undefined }}>
+                      <div>
+                        <div>{fmtData(s.data)}</div>
+                        <div style={{ color: "var(--dim)" }}>{s.series} séries · {s.repeticoes} reps</div>
+                      </div>
+                      <div className="text-right numero">
+                        <div>{s.cargaMax} kg máx.</div>
+                        <div style={{ color: "var(--dim)" }}>{Math.round(s.volume)} kg volume</div>
+                      </div>
                     </div>
-                    <div className="text-right numero">
-                      <div>{s.cargaMax} kg máx.</div>
-                      <div style={{ color: "var(--dim)" }}>{Math.round(s.volume)} kg volume</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Cartao>
-          ))}
-        </div>
-      </section>
+                  ))}
+                </div>
+              </Cartao>
+            ))}
+          </div>
+        </section>
+      )}
     </>
   );
 }

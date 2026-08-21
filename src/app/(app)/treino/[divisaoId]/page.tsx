@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import ExecucaoTreino from "@/components/ExecucaoTreino";
+import ManterTelaAcordada from "@/components/ManterTelaAcordada";
 
 export const dynamic = "force-dynamic";
 
@@ -81,18 +82,21 @@ export default async function ExecucaoPage({ params }: { params: { divisaoId: st
   }
 
   return (
-    <ExecucaoTreino
-      alunoId={usuario.id}
-      fichaId={(divisao as any).fichas?.id ?? null}
-      fichaNome={(treinoAberto as any)?.ficha_nome_snapshot ?? (divisao as any).fichas?.nome ?? null}
-      divisao={{
-        id: divisao.id,
-        codigo: (treinoAberto as any)?.divisao_codigo_snapshot ?? divisao.codigo,
-        nome: (treinoAberto as any)?.divisao_nome_snapshot ?? divisao.nome,
-      }}
-      itens={itens as any}
-      ultimasCargas={ultimas}
-      treinoEmAndamento={treinoAberto as any}
-    />
+    <>
+      <ManterTelaAcordada />
+      <ExecucaoTreino
+        alunoId={usuario.id}
+        fichaId={(divisao as any).fichas?.id ?? null}
+        fichaNome={(treinoAberto as any)?.ficha_nome_snapshot ?? (divisao as any).fichas?.nome ?? null}
+        divisao={{
+          id: divisao.id,
+          codigo: (treinoAberto as any)?.divisao_codigo_snapshot ?? divisao.codigo,
+          nome: (treinoAberto as any)?.divisao_nome_snapshot ?? divisao.nome,
+        }}
+        itens={itens as any}
+        ultimasCargas={ultimas}
+        treinoEmAndamento={treinoAberto as any}
+      />
+    </>
   );
 }

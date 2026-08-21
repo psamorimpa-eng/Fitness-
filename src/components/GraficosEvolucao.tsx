@@ -29,73 +29,81 @@ export default function GraficosEvolucao({
 
   return (
     <div className="space-y-4 px-4 pt-4">
-      <Cartao>
-        <div className="flex items-center justify-between gap-2">
-          <Rotulo>Carga por exercício</Rotulo>
-          <select value={exercicio} onChange={(e) => setExercicio(e.target.value)}
-            className="max-w-[170px] rounded-lg px-2 py-1 text-xs outline-none"
-            style={{ background: "var(--superficie-2)", border: "1px solid var(--linha)", color: "var(--texto)" }}>
-            {exercicios.map((e) => <option key={e}>{e}</option>)}
-          </select>
-        </div>
-        <div className="mt-3" style={{ height: 180 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={dadosCarga}>
-              <CartesianGrid stroke="var(--linha)" vertical={false} />
-              <XAxis dataKey="dia" tick={eixo} axisLine={false} tickLine={false} />
-              <YAxis tick={eixo} axisLine={false} tickLine={false} width={30} />
-              <Tooltip contentStyle={dica} />
-              <Line type="monotone" dataKey="carga" name="Carga (kg)" stroke="#E23A2E" strokeWidth={2.5} dot={{ r: 2 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </Cartao>
+      {!!exercicios.length && (
+        <Cartao>
+          <div className="flex items-center justify-between gap-2">
+            <Rotulo>Carga por exercício</Rotulo>
+            <select value={exercicio} onChange={(e) => setExercicio(e.target.value)}
+              className="max-w-[170px] rounded-lg px-2 py-1 text-xs outline-none"
+              style={{ background: "var(--superficie-2)", border: "1px solid var(--linha)", color: "var(--texto)" }}>
+              {exercicios.map((e) => <option key={e}>{e}</option>)}
+            </select>
+          </div>
+          <div className="mt-3" style={{ height: 180 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={dadosCarga}>
+                <CartesianGrid stroke="var(--linha)" vertical={false} />
+                <XAxis dataKey="dia" tick={eixo} axisLine={false} tickLine={false} />
+                <YAxis tick={eixo} axisLine={false} tickLine={false} width={30} />
+                <Tooltip contentStyle={dica} />
+                <Line type="monotone" dataKey="carga" name="Carga (kg)" stroke="#E23A2E" strokeWidth={2.5} dot={{ r: 2 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Cartao>
+      )}
 
-      <Cartao>
-        <Rotulo>Volume semanal (toneladas)</Rotulo>
-        <div className="mt-3" style={{ height: 170 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={dadosVolume}>
-              <CartesianGrid stroke="var(--linha)" vertical={false} />
-              <XAxis dataKey="dia" tick={eixo} axisLine={false} tickLine={false} />
-              <YAxis tick={eixo} axisLine={false} tickLine={false} width={26} />
-              <Tooltip contentStyle={dica} cursor={{ fill: "var(--superficie-2)" }} />
-              <Bar dataKey="volume" name="Volume (t)" fill="#1D4ED8" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </Cartao>
+      {!!dadosVolume.length && (
+        <Cartao>
+          <Rotulo>Volume semanal (toneladas)</Rotulo>
+          <div className="mt-3" style={{ height: 170 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dadosVolume}>
+                <CartesianGrid stroke="var(--linha)" vertical={false} />
+                <XAxis dataKey="dia" tick={eixo} axisLine={false} tickLine={false} />
+                <YAxis tick={eixo} axisLine={false} tickLine={false} width={26} />
+                <Tooltip contentStyle={dica} cursor={{ fill: "var(--superficie-2)" }} />
+                <Bar dataKey="volume" name="Volume (t)" fill="#1D4ED8" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Cartao>
+      )}
 
-      <Cartao>
-        <Rotulo>Peso corporal e gordura</Rotulo>
-        <div className="mt-3" style={{ height: 170 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={dadosMedidas}>
-              <CartesianGrid stroke="var(--linha)" vertical={false} />
-              <XAxis dataKey="dia" tick={eixo} axisLine={false} tickLine={false} />
-              <YAxis tick={eixo} axisLine={false} tickLine={false} width={30} />
-              <Tooltip contentStyle={dica} />
-              <Line type="monotone" dataKey="peso" name="Peso (kg)" stroke="#F2F4F8" strokeWidth={2.5} dot={{ r: 2 }} />
-              <Line type="monotone" dataKey="gordura" name="Gordura (%)" stroke="#F4C20D" strokeWidth={2} dot={{ r: 2 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </Cartao>
+      {!!dadosMedidas.length && (
+        <Cartao>
+          <Rotulo>Peso corporal e gordura</Rotulo>
+          <div className="mt-3" style={{ height: 170 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={dadosMedidas}>
+                <CartesianGrid stroke="var(--linha)" vertical={false} />
+                <XAxis dataKey="dia" tick={eixo} axisLine={false} tickLine={false} />
+                <YAxis tick={eixo} axisLine={false} tickLine={false} width={30} />
+                <Tooltip contentStyle={dica} />
+                <Line type="monotone" dataKey="peso" name="Peso (kg)" stroke="#F2F4F8" strokeWidth={2.5} dot={{ r: 2 }} />
+                <Line type="monotone" dataKey="gordura" name="Gordura (%)" stroke="#F4C20D" strokeWidth={2} dot={{ r: 2 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Cartao>
+      )}
 
-      <Cartao>
-        <Rotulo>Frequência semanal</Rotulo>
-        <div className="mt-3" style={{ height: 150 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={dadosFreq}>
-              <CartesianGrid stroke="var(--linha)" vertical={false} />
-              <XAxis dataKey="dia" tick={eixo} axisLine={false} tickLine={false} />
-              <YAxis tick={eixo} axisLine={false} tickLine={false} width={22} />
-              <Tooltip contentStyle={dica} cursor={{ fill: "var(--superficie-2)" }} />
-              <Bar dataKey="treinos" name="Treinos" fill="#16A34A" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </Cartao>
+      {!!dadosFreq.length && (
+        <Cartao>
+          <Rotulo>Frequência semanal</Rotulo>
+          <div className="mt-3" style={{ height: 150 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dadosFreq}>
+                <CartesianGrid stroke="var(--linha)" vertical={false} />
+                <XAxis dataKey="dia" tick={eixo} axisLine={false} tickLine={false} />
+                <YAxis tick={eixo} axisLine={false} tickLine={false} width={22} />
+                <Tooltip contentStyle={dica} cursor={{ fill: "var(--superficie-2)" }} />
+                <Bar dataKey="treinos" name="Treinos" fill="#16A34A" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Cartao>
+      )}
     </div>
   );
 }

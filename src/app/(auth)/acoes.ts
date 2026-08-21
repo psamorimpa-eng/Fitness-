@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { criarClienteServidor } from "@/lib/supabase/server";
 
-const URL_APP = "https://minha-ficha-fitness.vercel.app";
+const URL_APP = "https://fitness-rust-ten.vercel.app";
 
 async function registrarAcesso(supabase: ReturnType<typeof criarClienteServidor>, usuarioId: string) {
   await supabase.from("usuarios")

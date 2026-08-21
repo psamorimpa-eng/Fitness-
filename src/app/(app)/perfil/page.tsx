@@ -2,16 +2,16 @@ import { LogOut, ChevronRight } from "lucide-react";
 import { redirect } from "next/navigation";
 import { usuarioAtual } from "@/lib/supabase/server";
 import { sair } from "../../(auth)/acoes";
-import { Cartao, Rotulo, Titulo, Indicador, Etiqueta, Cabecalho } from "@/components/ui";
+import { Cartao, Rotulo, Titulo, Indicador, Cabecalho } from "@/components/ui";
 import { fmtData, iniciais, diasEntre } from "@/lib/formato";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 const ATALHOS = [
-  ["Medidas corporais", "/medidas"], ["Avaliação física", "/avaliacao"], ["Agenda", "/agenda"],
-  ["Mensagens", "/mensagens"], ["Notificações", "/notificacoes"], ["Plano e assinatura", "/planos"],
-  ["Configurações", "/configuracoes"],
+  ["Minhas fichas", "/fichas"],
+  ["Histórico de treinos", "/historico"],
+  ["Minha evolução", "/evolucao"],
 ];
 
 export default async function Perfil() {
@@ -35,7 +35,7 @@ export default async function Perfil() {
             <div className="min-w-0">
               <Titulo tamanho={20}>{usuario.nome}</Titulo>
               <div className="truncate text-sm" style={{ color: "var(--dim)" }}>{usuario.email}</div>
-              <div className="mt-1"><Etiqueta cor="#1D4ED8">{usuario.papel}</Etiqueta></div>
+              <div className="mt-1 text-xs" style={{ color: "var(--fraco)" }}>Conta pessoal</div>
             </div>
           </div>
         </Cartao>
@@ -50,7 +50,7 @@ export default async function Perfil() {
             <Cartao>
               <Rotulo>Dados do treino</Rotulo>
               <dl className="mt-2 space-y-2 text-sm">
-                {[["Objetivo", perfil.objetivo], ["Nível", perfil.nivel],
+                {[["Objetivo", perfil.objetivo ?? "Não informado"], ["Nível", perfil.nivel],
                   ["Início", fmtData(perfil.data_inicio)], ["Meta semanal", `${perfil.meta_semanal} treinos`],
                   ["Restrições", perfil.restricoes ?? "Nenhuma"], ["Lesões", perfil.lesoes ?? "Nenhuma"]].map(([k, v]) => (
                   <div key={k as string} className="flex justify-between gap-3">

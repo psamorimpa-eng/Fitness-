@@ -11,7 +11,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
     <div className="relative mx-auto min-h-screen max-w-md pb-24">
       <RegistrarServiceWorker />
       {children}
-      <NavegacaoInferior papel={usuario.papel} />
+      <NavegacaoInferior />
     </div>
   );
 }

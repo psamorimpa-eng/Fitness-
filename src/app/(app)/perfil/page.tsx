@@ -8,26 +8,32 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-const ATALHOS = [
-  ["Minhas fichas", "/fichas"],
-  ["Histórico de treinos", "/historico"],
-  ["Minha evolução", "/evolucao"],
-];
-
 export default async function Perfil() {
   const usuario = await usuarioAtual();
   if (!usuario) redirect("/login");
-  const perfil = usuario.perfis_aluno;
+
+  const aluno = usuario.papel === "aluno";
+  const personal = usuario.papel === "personal";
+  const perfil = aluno ? usuario.perfis_aluno : null;
   const idade = usuario.nascimento ? Math.floor(diasEntre(usuario.nascimento, new Date().toISOString().slice(0, 10)) / 365.25) : "-";
+  const tipoConta = personal ? "Conta Personal" : usuario.papel === "admin" ? "Conta administrativa" : "Conta aluno";
+  const atalhos = personal
+    ? [["Meus alunos", "/alunos"], ["Fichas dos alunos", "/fichas"]]
+    : aluno
+      ? [["Minhas fichas", "/fichas"], ["Histórico de treinos", "/historico"], ["Minha evolução", "/evolucao"]]
+      : [];
 
   return (
     <>
-      <Cabecalho titulo="Perfil" direita={<Link href="/perfil/editar" className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--linha)" }}><Pencil size={14} /> Editar</Link>} />
+      <Cabecalho
+        titulo="Perfil"
+        direita={aluno ? <Link href="/perfil/editar" className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--linha)" }}><Pencil size={14} /> Editar</Link> : undefined}
+      />
       <div className="space-y-3 px-4 pt-3">
         <Cartao>
           <div className="flex items-center gap-4">
             <div className="display flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-2xl text-white" style={{ background: "var(--marca)" }}>{iniciais(usuario.nome)}</div>
-            <div className="min-w-0"><Titulo tamanho={20}>{usuario.nome}</Titulo><div className="truncate text-sm" style={{ color: "var(--dim)" }}>{usuario.email}</div><div className="mt-1 text-xs" style={{ color: "var(--fraco)" }}>Conta pessoal</div></div>
+            <div className="min-w-0"><Titulo tamanho={20}>{usuario.nome}</Titulo><div className="truncate text-sm" style={{ color: "var(--dim)" }}>{usuario.email}</div><div className="mt-1 text-xs" style={{ color: "var(--fraco)" }}>{tipoConta}</div></div>
           </div>
         </Cartao>
 
@@ -45,9 +51,21 @@ export default async function Perfil() {
           </>
         )}
 
-        <div className="cartao overflow-hidden">
-          {ATALHOS.map(([rotulo, href], i) => <Link key={href} href={href} className="flex items-center gap-3 px-4 py-3 text-sm" style={{ borderTop: i ? "1px solid var(--linha)" : undefined }}><span className="flex-1">{rotulo}</span><ChevronRight size={16} style={{ color: "var(--fraco)" }} /></Link>)}
-        </div>
+        {personal && (
+          <Cartao>
+            <Rotulo>Perfil profissional</Rotulo>
+            <div className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
+              {usuario.perfis_personal?.especialidade ?? "Personal trainer"}
+              {usuario.perfis_personal?.cref ? ` · CREF ${usuario.perfis_personal.cref}` : ""}
+            </div>
+          </Cartao>
+        )}
+
+        {!!atalhos.length && (
+          <div className="cartao overflow-hidden">
+            {atalhos.map(([rotulo, href], i) => <Link key={href} href={href} className="flex items-center gap-3 px-4 py-3 text-sm" style={{ borderTop: i ? "1px solid var(--linha)" : undefined }}><span className="flex-1">{rotulo}</span><ChevronRight size={16} style={{ color: "var(--fraco)" }} /></Link>)}
+          </div>
+        )}
 
         <form action={sair}>
           <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl py-3 font-semibold" style={{ border: "1px solid var(--marca)", color: "var(--marca)" }}><LogOut size={16} /> Sair da conta</button>

@@ -10,21 +10,29 @@ export default async function EditarFicha({ params }: { params: { fichaId: strin
 
   const supabase = criarClienteServidor();
 
-  const [{ data: ficha }, { data: perfil }, { data: exercicios }, { data: frequentes }] = await Promise.all([
+  const [{ data: ficha }, { data: exercicios }, { data: frequentes }] = await Promise.all([
     supabase.from("fichas")
       .select("*, divisoes_treino(*, series_planejadas(*))")
       .eq("id", params.fichaId)
-      .eq("aluno_id", usuario.id)
-      .maybeSingle(),
-    supabase.from("perfis_aluno")
-      .select("objetivo, nivel")
-      .eq("usuario_id", usuario.id)
       .maybeSingle(),
     supabase.rpc("catalogo_exercicios_v2"),
     supabase.rpc("exercicios_frequentes", { p_limite: 12 }),
   ]);
 
   if (!ficha) notFound();
+
+  const [{ data: perfil }, { data: aluno }] = await Promise.all([
+    supabase.from("perfis_aluno")
+      .select("objetivo, nivel")
+      .eq("usuario_id", ficha.aluno_id)
+      .maybeSingle(),
+    supabase.from("usuarios")
+      .select("id, nome")
+      .eq("id", ficha.aluno_id)
+      .maybeSingle(),
+  ]);
+
+  if (!aluno) notFound();
 
   const divisoes = [...(ficha.divisoes_treino ?? [])]
     .sort((a: any, b: any) => a.ordem - b.ordem)
@@ -47,8 +55,8 @@ export default async function EditarFicha({ params }: { params: { fichaId: strin
     }));
 
   const alunos = [{
-    id: usuario.id,
-    nome: usuario.nome,
+    id: aluno.id,
+    nome: aluno.nome,
     objetivo: perfil?.objetivo ?? null,
     nivel: perfil?.nivel ?? "Intermediário",
   }];
@@ -72,7 +80,7 @@ export default async function EditarFicha({ params }: { params: { fichaId: strin
       }))}
       frequentes={(frequentes ?? []).map((f: any) => f.exercicio_id)}
       fichaExistente={{
-        id: ficha.id, aluno_id: usuario.id, nome: ficha.nome,
+        id: ficha.id, aluno_id: ficha.aluno_id, nome: ficha.nome,
         objetivo: ficha.objetivo ?? "Hipertrofia", data_inicio: ficha.data_inicio,
         data_validade: ficha.data_validade, dias_semana: ficha.dias_semana,
         nivel: ficha.nivel ?? "Intermediário", status: ficha.status,

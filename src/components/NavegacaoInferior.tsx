@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ClipboardList, Dumbbell, History, TrendingUp, User } from "lucide-react";
+import { Home, ClipboardList, Dumbbell, History, TrendingUp, User, Users } from "lucide-react";
 
-const ITENS = [
+const ITENS_ALUNO = [
   { href: "/inicio", rotulo: "Início", Icone: Home },
   { href: "/fichas", rotulo: "Fichas", Icone: ClipboardList },
   { href: "/treino", rotulo: "Treino", Icone: Dumbbell },
@@ -12,13 +12,32 @@ const ITENS = [
   { href: "/perfil", rotulo: "Perfil", Icone: User },
 ];
 
-export default function NavegacaoInferior() {
+const ITENS_PERSONAL = [
+  { href: "/inicio", rotulo: "Início", Icone: Home },
+  { href: "/alunos", rotulo: "Alunos", Icone: Users },
+  { href: "/fichas", rotulo: "Fichas", Icone: ClipboardList },
+  { href: "/perfil", rotulo: "Perfil", Icone: User },
+];
+
+const ITENS_ADMIN = [
+  { href: "/inicio", rotulo: "Início", Icone: Home },
+  { href: "/perfil", rotulo: "Perfil", Icone: User },
+];
+
+export default function NavegacaoInferior({ papel }: { papel: string }) {
   const pathname = usePathname();
+  const itens = papel === "personal" ? ITENS_PERSONAL : papel === "admin" ? ITENS_ADMIN : ITENS_ALUNO;
 
   return (
-    <nav className="fixed bottom-0 left-1/2 z-40 grid w-full max-w-md -translate-x-1/2 grid-cols-6 px-1 pb-[max(8px,env(safe-area-inset-bottom))] pt-2"
-      style={{ background: "var(--superficie)", borderTop: "1px solid var(--linha)" }}>
-      {ITENS.map(({ href, rotulo, Icone }) => {
+    <nav
+      className="fixed bottom-0 left-1/2 z-40 grid w-full max-w-md -translate-x-1/2 px-1 pb-[max(8px,env(safe-area-inset-bottom))] pt-2"
+      style={{
+        background: "var(--superficie)",
+        borderTop: "1px solid var(--linha)",
+        gridTemplateColumns: `repeat(${itens.length}, minmax(0, 1fr))`,
+      }}
+    >
+      {itens.map(({ href, rotulo, Icone }) => {
         const ativo = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link key={href} href={href}

@@ -34,12 +34,10 @@ function diferenca(atual: number | null, anterior: number | null, casas = 1) {
 
 function Variacao({ valor, unidade }: { valor: number | null; unidade: string }) {
   if (valor == null || valor === 0) return null;
-  const melhorMenor = unidade === "kg" || unidade === "cm";
   const subiu = valor > 0;
   const Icone = subiu ? TrendingUp : TrendingDown;
-  const cor = melhorMenor ? (subiu ? "#D97706" : "#16A34A") : "var(--dim)";
   return (
-    <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: cor }}>
+    <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: "var(--dim)" }}>
       <Icone size={12} /> {valor > 0 ? "+" : ""}{valor} {unidade}
     </span>
   );
@@ -76,23 +74,23 @@ export default async function MedidasPage({ searchParams }: { searchParams?: { s
   }));
 
   const atual = medidas[0] ?? null;
-  const anterior = medidas[1] ?? null;
   const hoje = hojeSaoPaulo();
+  const medidaHoje = atual?.data === hoje ? atual : null;
   const dadosFormulario: DadosMedidasFormulario = {
     data: hoje,
-    peso_kg: atual?.peso_kg ?? null,
-    gordura_pct: atual?.gordura_pct ?? null,
-    massa_muscular_kg: atual?.massa_muscular_kg ?? null,
-    peitoral_cm: atual?.peitoral_cm ?? null,
-    cintura_cm: atual?.cintura_cm ?? null,
-    abdomen_cm: atual?.abdomen_cm ?? null,
-    quadril_cm: atual?.quadril_cm ?? null,
-    braco_d_cm: atual?.braco_d_cm ?? null,
-    braco_e_cm: atual?.braco_e_cm ?? null,
-    coxa_d_cm: atual?.coxa_d_cm ?? null,
-    coxa_e_cm: atual?.coxa_e_cm ?? null,
-    panturrilha_d_cm: atual?.panturrilha_d_cm ?? null,
-    panturrilha_e_cm: atual?.panturrilha_e_cm ?? null,
+    peso_kg: medidaHoje?.peso_kg ?? null,
+    gordura_pct: medidaHoje?.gordura_pct ?? null,
+    massa_muscular_kg: medidaHoje?.massa_muscular_kg ?? null,
+    peitoral_cm: medidaHoje?.peitoral_cm ?? null,
+    cintura_cm: medidaHoje?.cintura_cm ?? null,
+    abdomen_cm: medidaHoje?.abdomen_cm ?? null,
+    quadril_cm: medidaHoje?.quadril_cm ?? null,
+    braco_d_cm: medidaHoje?.braco_d_cm ?? null,
+    braco_e_cm: medidaHoje?.braco_e_cm ?? null,
+    coxa_d_cm: medidaHoje?.coxa_d_cm ?? null,
+    coxa_e_cm: medidaHoje?.coxa_e_cm ?? null,
+    panturrilha_d_cm: medidaHoje?.panturrilha_d_cm ?? null,
+    panturrilha_e_cm: medidaHoje?.panturrilha_e_cm ?? null,
   };
 
   return (
@@ -125,7 +123,7 @@ export default async function MedidasPage({ searchParams }: { searchParams?: { s
       <section className="px-4 pt-4">
         <Cartao>
           <div className="mb-4">
-            <Titulo tamanho={18}>{atual?.data === hoje ? "Atualizar medição de hoje" : "Registrar nova medição"}</Titulo>
+            <Titulo tamanho={18}>{medidaHoje ? "Atualizar medição de hoje" : "Registrar nova medição"}</Titulo>
             <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
               Salvar novamente a mesma data atualiza o registro do dia sem duplicar o histórico.
             </p>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Play, ChevronRight } from "lucide-react";
+import { ClipboardList, Play, ChevronRight, Plus, ShieldCheck, Users } from "lucide-react";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import { Cartao, Rotulo, Titulo, Indicador, Barra, FaixaAnilhas, Vazio } from "@/components/ui";
 import { fmtData, semanaDe } from "@/lib/formato";
@@ -12,6 +12,78 @@ export default async function Inicio() {
   const usuario = await usuarioAtual();
   if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
+
+  if (usuario.papel === "personal") {
+    const [{ data: perfis }, { data: fichas }] = await Promise.all([
+      supabase.from("perfis_aluno")
+        .select("usuario_id, usuarios!perfis_aluno_usuario_id_fkey(nome)")
+        .eq("personal_id", usuario.id),
+      supabase.from("fichas").select("id, aluno_id, status, data_validade"),
+    ]);
+
+    const alunos = perfis ?? [];
+    const ids = new Set(alunos.map((p: any) => p.usuario_id));
+    const fichasAlunos = (fichas ?? []).filter((f: any) => ids.has(f.aluno_id));
+    const ativas = fichasAlunos.filter((f: any) => f.status === "ativa").length;
+    const semFichaAtiva = alunos.filter((p: any) => !fichasAlunos.some((f: any) => f.aluno_id === p.usuario_id && f.status === "ativa")).length;
+
+    return (
+      <>
+        <div className="px-4 pb-4 pt-5">
+          <Rotulo>Painel do Personal</Rotulo>
+          <Titulo tamanho={30}>Olá, {usuario.nome.split(" ")[0]}</Titulo>
+          <p className="mt-1 text-sm" style={{ color: "var(--dim)" }}>Gerencie somente os alunos vinculados ao seu perfil.</p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 px-4">
+          <Indicador rotulo="Alunos" valor={alunos.length} />
+          <Indicador rotulo="Fichas ativas" valor={ativas} />
+          <Indicador rotulo="Sem ficha" valor={semFichaAtiva} />
+        </div>
+
+        <div className="space-y-3 px-4 pt-4">
+          <Cartao href="/alunos">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ background: "var(--marca-suave)", color: "var(--marca)" }}><Users size={22} /></div>
+              <div className="min-w-0 flex-1"><Titulo tamanho={17}>Meus alunos</Titulo><div className="text-xs" style={{ color: "var(--dim)" }}>Objetivos, nível e situação das fichas</div></div>
+              <ChevronRight size={18} style={{ color: "var(--fraco)" }} />
+            </div>
+          </Cartao>
+
+          <Cartao href="/fichas">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ background: "var(--superficie-2)", color: "var(--marca)" }}><ClipboardList size={22} /></div>
+              <div className="min-w-0 flex-1"><Titulo tamanho={17}>Fichas dos alunos</Titulo><div className="text-xs" style={{ color: "var(--dim)" }}>{fichasAlunos.length} fichas cadastradas</div></div>
+              <ChevronRight size={18} style={{ color: "var(--fraco)" }} />
+            </div>
+          </Cartao>
+
+          <Link href="/fichas/nova" className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-semibold text-white" style={{ background: "var(--marca)" }}>
+            <Plus size={17} /> Criar nova ficha
+          </Link>
+        </div>
+      </>
+    );
+  }
+
+  if (usuario.papel === "admin") {
+    return (
+      <>
+        <div className="px-4 pb-4 pt-5">
+          <Rotulo>Administração</Rotulo>
+          <Titulo tamanho={30}>Olá, {usuario.nome.split(" ")[0]}</Titulo>
+        </div>
+        <div className="px-4">
+          <Cartao>
+            <div className="flex items-center gap-3">
+              <ShieldCheck size={28} style={{ color: "var(--marca)" }} />
+              <div><Titulo tamanho={17}>Conta administrativa</Titulo><p className="mt-1 text-sm" style={{ color: "var(--dim)" }}>O painel administrativo será separado das informações pessoais de treino.</p></div>
+            </div>
+          </Cartao>
+        </div>
+      </>
+    );
+  }
 
   const [{ data: ficha }, { data: treinos }, { data: medidas }] = await Promise.all([
     supabase.from("fichas")

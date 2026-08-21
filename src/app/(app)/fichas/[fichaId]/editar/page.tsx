@@ -20,7 +20,7 @@ export default async function EditarFicha({ params }: { params: { fichaId: strin
       .select("objetivo, nivel")
       .eq("usuario_id", usuario.id)
       .maybeSingle(),
-    supabase.rpc("catalogo_exercicios"),
+    supabase.rpc("catalogo_exercicios_v2"),
     supabase.rpc("exercicios_frequentes", { p_limite: 12 }),
   ]);
 
@@ -29,12 +29,14 @@ export default async function EditarFicha({ params }: { params: { fichaId: strin
   const divisoes = [...(ficha.divisoes_treino ?? [])]
     .sort((a: any, b: any) => a.ordem - b.ordem)
     .map((d: any) => ({
+      id: d.id,
       codigo: d.codigo,
       nome: d.nome,
       ordem: d.ordem,
       itens: [...(d.series_planejadas ?? [])]
         .sort((a: any, b: any) => a.ordem - b.ordem)
         .map((s: any) => ({
+          id: s.id,
           exercicio_id: s.exercicio_id, ordem: s.ordem, series: s.series,
           rep_min: s.rep_min ?? 8, rep_max: s.rep_max ?? 12,
           carga_sugerida: Number(s.carga_sugerida ?? 0), descanso_seg: s.descanso_seg ?? 60,
@@ -60,6 +62,9 @@ export default async function EditarFicha({ params }: { params: { fichaId: strin
         nivel: e.nivel,
         tipo: e.tipo,
         descricao: e.descricao,
+        instrucoes: e.instrucoes,
+        erros_comuns: e.erros_comuns,
+        grupos_secundarios: e.grupos_secundarios ?? [],
         imagem_url: e.imagem_url,
         video_url: e.video_url,
         grupo: e.grupo ?? "Outros",

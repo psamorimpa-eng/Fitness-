@@ -4,6 +4,7 @@ import { AlertTriangle, Dumbbell, Plus } from "lucide-react";
 import { criarClienteServidor, usuarioAtual } from "@/lib/supabase/server";
 import { Cartao, Titulo, Etiqueta, Cabecalho, Vazio } from "@/components/ui";
 import AcoesFicha from "@/components/AcoesFicha";
+import CompartilharFicha from "@/components/CompartilharFicha";
 import { fmtData } from "@/lib/formato";
 import { avisoValidade } from "@/lib/validade";
 
@@ -56,6 +57,7 @@ export default async function Fichas() {
               )}
               <div className="mt-3 flex flex-wrap gap-2">
                 <Link href={`/fichas/${f.id}/editar`} className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--linha)" }}>Editar</Link>
+                <CompartilharFicha fichaId={f.id} fichaNome={f.nome} />
                 <AcoesFicha fichaId={f.id} status={f.status} />
                 <Link href="/historico" className="rounded-xl px-3 py-2 text-sm" style={{ border: "1px solid var(--linha)" }}>Treinos</Link>
               </div>

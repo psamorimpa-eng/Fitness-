@@ -3,9 +3,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   X, Bell, Check, Plus, Minus, Play, Pause, Timer, SkipForward, Repeat, Trophy, Save, CloudOff,
-  Video, ExternalLink, ImageOff, Cloud, Loader2, AlertTriangle,
+  ImageOff, Cloud, Loader2, AlertTriangle,
 } from "lucide-react";
 import { Cartao, Rotulo, Titulo, Etiqueta, Barra, Indicador } from "@/components/ui";
+import DemonstracaoExercicio from "@/components/DemonstracaoExercicio";
 import { fmtHora } from "@/lib/formato";
 import { sugereProgressao } from "@/lib/calculos";
 import {
@@ -168,11 +169,9 @@ export default function ExecucaoTreino({
     }
     void preparar();
     return () => { cancelado = true; };
-    // A preparação deve ocorrer uma vez para esta divisão/sessão.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alunoId, divisao.id]);
 
-  // Salva observações do treino automaticamente após pequena pausa na digitação.
   useEffect(() => {
     if (!preparado) return;
     const timer = window.setTimeout(async () => {
@@ -339,11 +338,7 @@ export default function ExecucaoTreino({
 
           <div className="mt-3 flex items-center justify-between gap-2">
             {exercicio?.descricao && <p className="flex-1 text-xs" style={{ color: "var(--dim)" }}>{exercicio.descricao}</p>}
-            {exercicio?.video_url && (
-              <a href={exercicio.video_url} target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold" style={{ background: "var(--marca-suave)", color: "var(--marca)" }}>
-                <Video size={14} /> Ver vídeo <ExternalLink size={11} />
-              </a>
-            )}
+            {exercicio && <DemonstracaoExercicio exercicio={exercicio} rotulo="Ver demonstração" pequeno />}
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2">

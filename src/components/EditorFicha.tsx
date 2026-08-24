@@ -1,30 +1,33 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Check,
   ChevronDown,
   ChevronUp,
+  Cloud,
+  CloudOff,
   Copy,
-  ExternalLink,
   ImageOff,
+  Loader2,
   Plus,
   Save,
   Search,
   Trash2,
-  Video,
   X,
   Zap,
 } from "lucide-react";
 import { Cartao, Etiqueta, Rotulo, Titulo } from "@/components/ui";
+import DemonstracaoExercicio from "@/components/DemonstracaoExercicio";
 import {
   salvarFicha,
   type DivisaoFicha,
   type FichaCompleta,
   type ItemFicha,
 } from "@/app/(app)/fichas/acoes";
+import { salvarFichaAutomatica } from "@/app/(app)/fichas/acoes-colaboracao";
 
 const OBJETIVOS = [
   "Emagrecimento",
@@ -87,7 +90,12 @@ interface ExercicioCatalogo {
   descricao?: string | null;
   imagem_url?: string | null;
   video_url?: string | null;
+  video_embutido_url?: string | null;
+  video_embutido_licenca?: string | null;
+  video_embutido_autor?: string | null;
 }
+
+type EstadoAutoSave = "aguardando" | "salvando" | "salvo" | "offline" | "erro";
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 const emMeses = (n: number) => {
@@ -100,6 +108,19 @@ const campo = {
   border: "1px solid var(--linha)",
   color: "var(--texto)",
 };
+
+function StatusAutoSave({ estado }: { estado: EstadoAutoSave }) {
+  const conteudo = estado === "salvando"
+    ? { Icone: Loader2, texto: "Salvando automaticamente…", classe: "animate-spin" }
+    : estado === "salvo"
+      ? { Icone: Cloud, texto: "Salvo automaticamente", classe: "" }
+      : estado === "offline"
+        ? { Icone: CloudOff, texto: "Sem internet · salvaremos ao reconectar", classe: "" }
+        : estado === "erro"
+          ? { Icone: AlertTriangle, texto: "Erro no auto save · tentaremos novamente", classe: "" }
+          : { Icone: Cloud, texto: "Auto save após adicionar exercício", classe: "" };
+  return <div className="mt-0.5 flex items-center gap-1 text-[10px]" style={{ color: estado === "erro" ? "var(--marca)" : "var(--fraco)" }}><conteudo.Icone size={11} className={conteudo.classe} /> {conteudo.texto}</div>;
+}
 
 function FotoExercicio({ exercicio, grande = false }: { exercicio: ExercicioCatalogo; grande?: boolean }) {
   return (
@@ -154,6 +175,11 @@ export default function EditorFicha({
     observacoes: "",
     divisoes: [],
   });
+  const [estadoAuto, setEstadoAuto] = useState<EstadoAutoSave>(fichaExistente ? "salvo" : "aguardando");
+  const [onlineTick, setOnlineTick] = useState(0);
+  const ultimaVersaoSalva = useRef(JSON.stringify(ficha));
+  const filaAutoSave = useRef<Promise<void>>(Promise.resolve());
+  const timerAutoSave = useRef<number | null>(null);
 
   const [aba, setAba] = useState(0);
   const [bancoAberto, setBancoAberto] = useState(false);
@@ -179,6 +205,58 @@ export default function EditorFicha({
     const ordem = new Map(frequentes.map((id, i) => [id, i]));
     return [...base].sort((a, b) => (ordem.get(a.id) ?? 999) - (ordem.get(b.id) ?? 999) || a.nome.localeCompare(b.nome));
   }, [exercicios, busca, grupo, frequentes]);
+
+  useEffect(() => {
+    const aoVoltar = () => setOnlineTick((v) => v + 1);
+    window.addEventListener("online", aoVoltar);
+    return () => window.removeEventListener("online", aoVoltar);
+  }, []);
+
+  useEffect(() => {
+    const temExercicio = ficha.divisoes.some((d) => d.itens.length > 0);
+    if (!temExercicio) {
+      if (!ficha.id) setEstadoAuto("aguardando");
+      return;
+    }
+
+    const versao = JSON.stringify(ficha);
+    if (versao === ultimaVersaoSalva.current) return;
+    if (timerAutoSave.current) window.clearTimeout(timerAutoSave.current);
+
+    timerAutoSave.current = window.setTimeout(() => {
+      const snapshot = JSON.parse(JSON.stringify(ficha)) as FichaCompleta;
+      const versaoSnapshot = JSON.stringify(snapshot);
+      if (!navigator.onLine) {
+        setEstadoAuto("offline");
+        return;
+      }
+
+      setEstadoAuto("salvando");
+      filaAutoSave.current = filaAutoSave.current.then(async () => {
+        try {
+          const resultado = await salvarFichaAutomatica({ ...snapshot, aluno_id: usuario?.id ?? snapshot.aluno_id });
+          if ("erro" in resultado && resultado.erro) {
+            setEstadoAuto("erro");
+            return;
+          }
+          if ("id" in resultado && resultado.id) {
+            const salvoComId = { ...snapshot, id: resultado.id };
+            ultimaVersaoSalva.current = JSON.stringify(salvoComId);
+            setFicha((atual) => atual.id ? atual : { ...atual, id: resultado.id });
+          } else {
+            ultimaVersaoSalva.current = versaoSnapshot;
+          }
+          setEstadoAuto("salvo");
+        } catch {
+          setEstadoAuto(navigator.onLine ? "erro" : "offline");
+        }
+      });
+    }, 850);
+
+    return () => {
+      if (timerAutoSave.current) window.clearTimeout(timerAutoSave.current);
+    };
+  }, [ficha, onlineTick, usuario?.id]);
 
   const atualizar = (mudanca: Partial<FichaCompleta>) => setFicha((f) => ({ ...f, ...mudanca }));
   const trocarDivisoes = (fn: (d: DivisaoFicha[]) => DivisaoFicha[]) =>
@@ -254,7 +332,9 @@ export default function EditorFicha({
 
   const salvar = () => {
     setErro(null);
+    if (timerAutoSave.current) window.clearTimeout(timerAutoSave.current);
     iniciarSalvamento(async () => {
+      await filaAutoSave.current;
       const resultado = await salvarFicha({ ...ficha, aluno_id: usuario?.id ?? ficha.aluno_id });
       if ("erro" in resultado && resultado.erro) {
         setErro(resultado.erro);
@@ -274,8 +354,9 @@ export default function EditorFicha({
         <div className="min-w-0 flex-1">
           <Titulo tamanho={19}>{ficha.id ? "Editar ficha" : "Nova ficha"}</Titulo>
           <div className="text-xs" style={{ color: "var(--dim)" }}>{ficha.divisoes.length} divisões · {totalExercicios} exercícios</div>
+          <StatusAutoSave estado={estadoAuto} />
         </div>
-        <button onClick={salvar} disabled={salvando} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ background: "var(--marca)" }}>
+        <button onClick={salvar} disabled={salvando || estadoAuto === "salvando"} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ background: "var(--marca)" }}>
           <Save size={15} /> {salvando ? "Salvando" : "Salvar"}
         </button>
       </header>
@@ -424,11 +505,7 @@ export default function EditorFicha({
                         </div>
                       </button>
                     </div>
-                    {e.video_url && (
-                      <a href={e.video_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold" style={{ color: "var(--marca)", background: "var(--superficie-2)" }}>
-                        <Video size={13} /> Ver demonstração <ExternalLink size={11} />
-                      </a>
-                    )}
+                    <div className="mt-2"><DemonstracaoExercicio exercicio={e} pequeno /></div>
                   </div>
                 );
               })}
@@ -453,7 +530,7 @@ export default function EditorFicha({
                 <FotoExercicio exercicio={exercicioEditando} grande />
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <div className="text-xs" style={{ color: "var(--dim)" }}>{exercicioEditando.grupo} · {exercicioEditando.equipamento}</div>
-                  {exercicioEditando.video_url && <a href={exercicioEditando.video_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold" style={{ color: "var(--marca)", background: "var(--superficie-2)" }}><Video size={13} /> Vídeo <ExternalLink size={11} /></a>}
+                  <DemonstracaoExercicio exercicio={exercicioEditando} rotulo="Demonstração" pequeno />
                 </div>
               </div>
             )}

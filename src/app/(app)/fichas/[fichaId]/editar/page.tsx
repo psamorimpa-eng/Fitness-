@@ -67,6 +67,9 @@ export default async function EditarFicha({ params }: { params: { fichaId: strin
         grupos_secundarios: e.grupos_secundarios ?? [],
         imagem_url: e.imagem_url,
         video_url: e.video_url,
+        video_embutido_url: e.video_embutido_url,
+        video_embutido_licenca: e.video_embutido_licenca,
+        video_embutido_autor: e.video_embutido_autor,
         grupo: e.grupo ?? "Outros",
         equipamento: e.equipamento ?? "Outros",
       }))}

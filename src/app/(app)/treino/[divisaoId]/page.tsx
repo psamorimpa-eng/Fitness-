@@ -26,8 +26,6 @@ export default async function ExecucaoPage({ params }: { params: { divisaoId: st
   if (!usuario) redirect("/login");
   const supabase = criarClienteServidor();
 
-  // Evita embeds profundos do PostgREST. O relacionamento de exercícios possui mais de um
-  // caminho possível e retornava HTTP 300, que antes era interpretado como divisão inexistente.
   const { data: divisao, error: erroDivisao } = await supabase
     .from("divisoes_treino")
     .select("id, ficha_id, codigo, nome, ordem")
@@ -80,6 +78,9 @@ export default async function ExecucaoPage({ params }: { params: { divisaoId: st
       erros_comuns: e.erros_comuns,
       imagem_url: e.imagem_url,
       video_url: e.video_url,
+      video_embutido_url: e.video_embutido_url,
+      video_embutido_licenca: e.video_embutido_licenca,
+      video_embutido_autor: e.video_embutido_autor,
       categorias_musculares: e.grupo ? { nome: e.grupo } : null,
       equipamentos: e.equipamento ? { nome: e.equipamento } : null,
     }])
@@ -110,7 +111,6 @@ export default async function ExecucaoPage({ params }: { params: { divisaoId: st
     ? (treinoAberto as any).plano_snapshot as any[]
     : [];
 
-  // Um treino já iniciado sempre usa o plano congelado no momento do início.
   if (snapshot.length) {
     itens = snapshot
       .map((p: any, i: number) => {
